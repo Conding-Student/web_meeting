@@ -17,6 +17,11 @@ const BASE_URL = {
 };
 
 export const endpoints: Record<EndpointKey, EndpointConfig> = {
+
+  //-------------------
+  // SAMPLE INTEGRATION
+  //-------------------
+
   //-------------------
   // // RBAC/PERMISSIONS
   //-------------------
