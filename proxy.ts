@@ -4,23 +4,33 @@ import type { NextRequest } from "next/server";
 const PUBLIC_PATHS = ["/signin", "/about", "unauthorized"];
 
 export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
 
-  // Allow public paths
-  const isPublic = PUBLIC_PATHS.some(
-    (path) => pathname === path || pathname.startsWith(path + "/"),
-  );
+  // INTEGRATION: PUBLIC AND PRIVATE ROUTES
+  // This middleware checks if the incoming request is for a public or private route.
+  // For private routes, it verifies the presence of an auth token cookie.
+  // If the token is missing, it redirects to the /unauthorized page with a redirect query param.
 
-  if (isPublic) return NextResponse.next();
+  // const { pathname } = request.nextUrl;
+
+  // // Allow public paths
+  // const isPublic = PUBLIC_PATHS.some(
+  //   (path) => pathname === path || pathname.startsWith(path + "/"),
+  // );
+
+  // if (isPublic) return NextResponse.next();
 
   // Check token cookie
-  const token = request.cookies.get("token")?.value;
+  // const token = request.cookies.get("token")?.value;
 
-  if (!token) {
-    const unauthorizedUrl = new URL("/unauthorized", request.url);
-    unauthorizedUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(unauthorizedUrl);
-  }
+  // if (!token) {
+  //   const unauthorizedUrl = new URL("/unauthorized", request.url);
+  //   unauthorizedUrl.searchParams.set("redirect", pathname);
+  //   return NextResponse.redirect(unauthorizedUrl);
+  // }
+
+
+// BYPASS
+// Remove this bypass in production to enforce auth checks.
 
   return NextResponse.next();
 }

@@ -1,6 +1,6 @@
-// ==================== TYPES ====================
+// services/api/ApiEndpoint.ts
 
-export type EndpointKey = "permissions" | "logout" | "forgot-password" | "sample";
+export type EndpointKey = "permissions" | "logout" | "dashboard-stats" | "sample";
 
 export interface EndpointConfig {
   url: string;
@@ -11,42 +11,25 @@ export interface EndpointConfig {
   raw?: boolean;
 }
 
-const BASE_URL = {
-  public: process.env.API_BASE_URL_PUBLIC ?? "",
-  private: process.env.API_BASE_URL_PRIVATE ?? "",
-};
-
 export const endpoints: Record<EndpointKey, EndpointConfig> = {
-
-  //-------------------
-  // SAMPLE INTEGRATION
-  //-------------------
-
-  //-------------------
-  // // RBAC/PERMISSIONS
-  //-------------------
-  permissions: {
-    url: `${BASE_URL.public}/rbac/roles/:id/permissions`,
-    method: "GET",
-    requireAuth: true,
-    useHmac: false,
-  },
-  logout: {
-    url: `${BASE_URL.private}/logout`,
-    method: "POST",
-    requireAuth: true,
-    useHmac: false,
-  },
-  "forgot-password": {
-    url: `${BASE_URL.private}/auth/forgot-password`,
-    method: "PUT",
-    requireAuth: true,
-    useHmac: false,
-  },
   sample: {
-    url: `${BASE_URL.private}/sample`,
+    url: "/api/mock/sample", 
     method: "GET",
     requireAuth: false,
-    useHmac: false,
   },
+  "dashboard-stats": {
+    url: "/api/mock/stats",
+    method: "GET",
+    requireAuth: true,
+  },
+  logout: {
+    url: "/api/logout",
+    method: "POST",
+    requireAuth: true,
+  },
+  permissions: {
+    url: "/api/rbac/permissions",
+    method: "GET",
+    requireAuth: true,
+  }
 };
