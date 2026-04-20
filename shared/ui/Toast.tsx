@@ -53,7 +53,7 @@ export default function Toast({
 
 	return (
 		<div
-			className={`fixed top-8 right-8 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl border ${style.bg} ${style.border} shadow-2xl animate-in slide-in-from-right-10 duration-300`}
+			className={`fixed top-8 right-8 z-100 flex items-center gap-3 px-6 py-4 rounded-2xl border ${style.bg} ${style.border} shadow-2xl animate-in slide-in-from-right-10 duration-300`}
 		>
 			{style.icon}
 			<span className="text-sm font-bold text-gray-800">{message}</span>

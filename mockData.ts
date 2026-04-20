@@ -1,5 +1,5 @@
 // shared/layout/mockData.ts
-import { LayoutGrid, FileText, Beaker, X, Users } from "lucide-react";
+import { LayoutGrid, Beaker, X } from "lucide-react";
 
 export interface Project {
 	id: number;

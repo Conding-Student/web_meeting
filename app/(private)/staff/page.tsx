@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import SearchableDropdown from "@/shared/ui/SearchableDropdown";
-import { Search, SlidersHorizontal, UserPlus } from "lucide-react";
+import { Search, UserPlus } from "lucide-react";
 import DataTable from "@/shared/ui/DataTable";
 import SegmentedTabs from "@/shared/ui/SegmentedTabs";
 
@@ -38,7 +38,7 @@ export default function StaffManagementPage() {
                     />
                     
                     {/* Search Bar - Matching the rounded white style with left icon */}
-                    <div className="relative w-full md:w-[450px]">
+                    <div className="relative w-full md:w-112.5">
                         <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                         <input
                             type="text"

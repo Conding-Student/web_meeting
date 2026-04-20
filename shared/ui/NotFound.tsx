@@ -12,7 +12,7 @@ export default function NotFound({
     message = "The page you're looking for doesn't exist or has been moved.",
 }: NotFoundProps) {
     return (
-        <div className="flex flex-col w-full min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="flex flex-col w-full min-h-screen bg-linear-to-br from-gray-50 to-gray-100">
             
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
@@ -35,18 +35,18 @@ export default function NotFound({
                         </div>
                         
                         {/* Main 404 text */}
-                        <div className="relative text-8xl md:text-9xl font-black bg-gradient-to-r from-teal-600 to-teal-400 bg-clip-text text-transparent">
+                        <div className="relative text-8xl md:text-9xl font-black bg-linear-to-r from-teal-600 to-teal-400 bg-clip-text text-transparent">
                             404
                         </div>
                         
                         {/* Decorative line */}
-                        <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 w-16 h-1 bg-gradient-to-r from-teal-400 to-teal-600 rounded-full" />
+                        <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 w-16 h-1 bg-linear-to-r from-teal-400 to-teal-600 rounded-full" />
                     </div>
                 </div>
                 
                 {/* Error Icon with Animation */}
                 <div className="mb-6 animate-bounce-slow">
-                    <div className="w-20 h-20 mx-auto bg-gradient-to-br from-teal-50 to-teal-100 rounded-full flex items-center justify-center">
+                    <div className="w-20 h-20 mx-auto bg-linear-to-br from-teal-50 to-teal-100 rounded-full flex items-center justify-center">
                         <svg className="w-10 h-10 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -76,7 +76,7 @@ export default function NotFound({
                 </div>
 
                 {/* Decorative Bottom Border */}
-                <div className="mt-12 w-24 h-0.5 bg-gradient-to-r from-transparent via-teal-300 to-transparent" />
+                <div className="mt-12 w-24 h-0.5 bg-linear-to-r from-transparent via-teal-300 to-transparent" />
 
                 {/* Footer */}
                 <div className="mt-12 opacity-40 w-full">

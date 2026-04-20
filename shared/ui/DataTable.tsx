@@ -19,7 +19,7 @@ export default function DataTable({
     data,
 }: TableProps) {
     return (
-        <div className="bg-white rounded-[2rem] p-8 border border-gray-50 shadow-sm">
+        <div className="bg-white rounded-4xl p-8 border border-gray-50 shadow-sm">
             {/* Table Header - Simplified for Management */}
             <div className="flex justify-between items-center mb-6">
                 <div>

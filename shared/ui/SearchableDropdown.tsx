@@ -49,7 +49,7 @@ export default function SearchableDropdown({
     };
 
     return (
-        <div ref={dropdownRef} className={`relative w-full md:w-[350px] ${className}`}>
+        <div ref={dropdownRef} className={`relative w-full md:w-87.5 ${className}`}>
             {/* Trigger Button */}
             <button
                 type="button"
@@ -73,7 +73,7 @@ export default function SearchableDropdown({
 
             {/* Dropdown Menu */}
             {isOpen && (
-                <div className="absolute top-full left-0 w-full mt-3 bg-white border border-gray-100 rounded-[1.5rem] shadow-2xl z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top">
+                <div className="absolute top-full left-0 w-full mt-3 bg-white border border-gray-100 rounded-3xl shadow-2xl z-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top">
                     {/* Search Input Area */}
                     <div className="p-4 border-b border-gray-50">
                         <div className="relative">
@@ -93,7 +93,7 @@ export default function SearchableDropdown({
                     </div>
 
                     {/* Options List */}
-                    <div className="max-h-[280px] overflow-y-auto custom-scrollbar">
+                    <div className="max-h-70 overflow-y-auto custom-scrollbar">
                         {filtered.length > 0 ? (
                             <div className="p-2">
                                 {filtered.map((opt) => (

@@ -41,7 +41,7 @@ export default function Header() {
         {isProfileOpen && (
           <div className="absolute right-0 mt-3 w-80 bg-white border border-gray-100 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
             {/* User Banner */}
-            <div className="h-24 bg-gradient-to-br from-[#D9E392] to-[#B5C94B] p-6" />
+            <div className="h-24 bg-linear-to-br from-[#D9E392] to-[#B5C94B] p-6" />
             
             <div className="px-6 pb-6 -mt-10">
               <div className="w-20 h-20 bg-white rounded-full p-1 shadow-md mb-3">

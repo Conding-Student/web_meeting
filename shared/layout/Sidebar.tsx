@@ -31,7 +31,7 @@ export default function Sidebar() {
 		>
 			{/* Brand Section */}
 			<div className="h-20 flex items-center px-6 overflow-hidden">
-				<div className="min-w-[32px] relative w-8 h-8">
+				<div className="min-w-8 relative w-8 h-8">
 					<Image
 						src="/Bakawan_Logo.png"
 						alt="Bakawan Logo"
@@ -69,7 +69,7 @@ export default function Sidebar() {
 							}`}
 							onClick={() => hasChildren && isExpanded && toggleMenu(item.id)}
 						>
-							<div className="flex items-center gap-3 min-w-[24px]">
+							<div className="flex items-center gap-3 min-w-6">
 								<Icon size={20} />
 								{isExpanded && (
 									<span className="text-sm font-semibold whitespace-nowrap">
