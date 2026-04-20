@@ -56,6 +56,32 @@ export default async function PrivateLayout({ children }: { children: React.Reac
  
 ---
 
+### Directory Structure
+We follow a Modular Feature pattern. Logic is co-located with routes until it needs to be shared.
+app/
+├── (auth)/          # Authentication flow
+├── (private)/       # Authenticated dashboard & internal tools
+│   ├── staff/       # Feature: Staff Management
+│   └── ui-test/     # Component Playground / Sandbox
+└── (public)/        # Landing pages & Unauthorized fallbacks
+
+shared/
+├── layout/          # Global structural components (Sidebar, Header)
+├── ui/              # Reusable Primitives (DataTable, SearchableDropdown, Toast)
+└── types/           # Global TypeScript definitions
+
+### UI Component Standards
+Component Promotion Rule
+- Local: If a component is used in only one page, keep it in that route's components/ folder.
+
+- Shared: If a component is used across two or more features, move it to shared/ui/.
+
+DataTable - Handles complex datasets with built-in pagination and sorting logic.
+SearchableDropdown - Enhanced select input with fuzzy-search and brand-specific styling.
+ToastGlobal -  feedback system managed via Zustand state.
+Modal - Portal-based overlay system to avoid z-index conflicts.
+SegmentedTabs - High-fidelity navigation for switching views within a single route.
+
 ## Development Guidelines
 
 # Creating New Features
