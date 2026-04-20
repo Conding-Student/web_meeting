@@ -10,11 +10,41 @@ import {
 	Info,
 	Layers,
 	PlayCircle,
+	Layout,
 } from "lucide-react";
+import SearchableDropdown from "@/shared/ui/SearchableDropdown";
+import SegmentedTabs from "@/shared/ui/SegmentedTabs";
+import DataTable from "@/shared/ui/DataTable";
+
+const MOCK_INSTITUTIONS = [
+	{ id: "1", label: "Bakawan Data Analytics" },
+	{ id: "2", label: "CARD Indogrosir HO" },
+	{ id: "3", label: "DC 1 Laguna" },
+];
+
+const MOCK_STAFF = [
+	{
+		cid: "CID-001",
+		name: "Juan Dela Cruz",
+		institution: "Bakawan Data",
+		mbl: "185,000.00",
+		dental: "8,500.00",
+		contact: "0917123",
+	},
+	{
+		cid: "CID-002",
+		name: "Maria Santos",
+		institution: "Indogrosir HO",
+		mbl: "150,000.00",
+		dental: "5,000.00",
+		contact: "0918456",
+	},
+];
 
 export default function UITestPage() {
 	// Modal State
 	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [activeTab, setActiveTab] = useState("Sample 1");
 
 	// Toast State
 	const [toast, setToast] = useState<{
@@ -134,6 +164,69 @@ export default function UITestPage() {
 					</div>
 				</section>
 			</div>
+
+			{/*  Data & Navigation (The New Section) */}
+			<section className="space-y-6">
+				<div className="flex items-center gap-4">
+					<div className="p-3 bg-[#D9E392] rounded-2xl text-[#1E4637]">
+						<Layout size={20} />
+					</div>
+					<div>
+						<h1 className="text-3xl font-black text-gray-900 tracking-tight">
+							Data & Navigation
+						</h1>
+					</div>
+				</div>
+
+				<div className="space-y-8 bg-gray-50/50 p-8 rounded-[3rem] border border-gray-100">
+					{/* Component 1: Segmented Tabs */}
+					<div className="space-y-3">
+						<p className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-4">
+							Segmented Tabs
+						</p>
+						<SegmentedTabs
+							tabs={["Sample 1", "Sample 2", "Sample 3"]}
+							activeTab={activeTab}
+							onChange={setActiveTab}
+						/>
+					</div>
+
+					{/* Component 2: Unified Control Row */}
+					<div className="space-y-3">
+						<p className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-4">
+							Control Row (Dropdown + Search)
+						</p>
+						<div className="flex flex-col lg:flex-row items-center gap-4 w-full">
+							<SearchableDropdown
+								options={MOCK_INSTITUTIONS}
+								onSelect={(id) => console.log("Selected:", id)}
+							/>
+						</div>
+					</div>
+
+					{/* Component 3: Data Table (Includes Pagination) */}
+					<div className="space-y-3">
+						<p className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-4">
+							Data Table & Pagination
+						</p>
+						<DataTable
+							title="Component Preview List"
+							countLabel="Total Items"
+							countValue={MOCK_STAFF.length}
+							headers={[
+								"CID",
+								"Full Name",
+								"Institution",
+								"Remaining MBL",
+								"Remaining Dental",
+								"Contact No.",
+								"Action",
+							]}
+							data={MOCK_STAFF}
+						/>
+					</div>
+				</div>
+			</section>
 
 			{/* MODAL INSTANCE */}
 			<Modal

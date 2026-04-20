@@ -17,13 +17,13 @@ const STAFF_DATA = [
 ];
 
 export default function StaffManagementPage() {
-    const [activeTab, setActiveTab] = useState("Institution Parameter");
+    const [activeTab, setActiveTab] = useState("Sample1");
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 p-4">
             {/* Reusable Segmented Tabs matching reference */}
             <SegmentedTabs 
-                tabs={["Institution Parameter", "Remittance Report"]} 
+                tabs={["Sample1", "Sample2", "Sample3"]} 
                 activeTab={activeTab} 
                 onChange={setActiveTab} 
             />

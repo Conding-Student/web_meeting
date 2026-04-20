@@ -1,5 +1,3 @@
-// services/api/ApiEndpoint.ts
-
 export type EndpointKey = "permissions" | "logout" | "dashboard-stats" | "sample";
 
 export interface EndpointConfig {

@@ -67,15 +67,6 @@ export const SIDEBAR_MENU = [
 			{ label: "404", path: "/error-handler/404" },
 		],
 	},
-
-	{
-		id: "staff",
-		label: "Staffs",
-		icon: Users,
-		path: "/staff",
-	},
-
-	{ id: "reports", label: "Reports", icon: FileText, path: "/reports" },
 ];
 
 export const DASHBOARD_STATS: DashboardStat[] = [
