@@ -1,33 +1,27 @@
-export type EndpointKey = "permissions" | "logout" | "dashboard-stats" | "sample";
+// app/lib/api/ApiEndpoint.ts
 
+// Defines the HTTP methods that can be used for an API endpoint.
+export type Method = "GET" | "POST" | "PUT" | "DELETE";
+
+// Configuration object for a single endpoint.
 export interface EndpointConfig {
-  url: string;
-  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-  requireAuth?: boolean;
-  useHmac?: boolean;
-  responseType?: "json" | "blob";
-  raw?: boolean;
+  path: string; // URL path with optional parameters (e.g., "/users/:id")
+  isPublic: boolean;
+  method: Method; // HTTP verb
+  requireAuth: boolean; // Whether the endpoint needs a Bearer token
+  useHmac?: boolean; // If true, an HMAC signature header is added to the request body
 }
 
-export const endpoints: Record<EndpointKey, EndpointConfig> = {
-  sample: {
-    url: "/api/mock/sample", 
-    method: "GET",
-    requireAuth: false,
-  },
-  "dashboard-stats": {
-    url: "/api/mock/stats",
-    method: "GET",
-    requireAuth: true,
-  },
-  logout: {
-    url: "/api/logout",
+// Central registry of all backend endpoints used in the application.
+export const ENDPOINTS: Record<string, EndpointConfig> = {
+  LOGIN: {
+    path: "/auth/register-login/otp",
+    isPublic: true,
     method: "POST",
-    requireAuth: true,
+    requireAuth: false, // Login does not need an existing token
+    useHmac: true, // HMAC protects the login request from tampering
   },
-  permissions: {
-    url: "/api/rbac/permissions",
-    method: "GET",
-    requireAuth: true,
-  }
-};
+} as const;
+
+// Extracts the possible endpoint keys from the ENDPOINTS object.
+export type EndpointKey = keyof typeof ENDPOINTS;

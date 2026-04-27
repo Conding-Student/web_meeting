@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ToastContainer } from "@/shared/ui/ToastContainer";
 
 export const metadata: Metadata = {
   title: "Enterprise Portfolio Management",
@@ -13,7 +14,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <ToastContainer />
+        {children}
+      </body>
     </html>
   );
 }
