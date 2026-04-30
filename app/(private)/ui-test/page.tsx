@@ -1,8 +1,9 @@
+// app/(private)/ui-test/page.tsx
 "use client";
 
 import React, { useState } from "react";
 import Modal from "@/shared/ui/Modal";
-import Toast, { ToastType } from "@/shared/ui/Toast";
+import { useAppToast } from "@/shared/ui/ToastContainer";
 import {
 	Beaker,
 	CheckCircle2,
@@ -42,28 +43,9 @@ const MOCK_STAFF = [
 ];
 
 export default function UITestPage() {
-	// Modal State
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState("Sample 1");
-
-	// Toast State
-	const [toast, setToast] = useState<{
-		isVisible: boolean;
-		message: string;
-		type: ToastType;
-	}>({
-		isVisible: false,
-		message: "",
-		type: "info",
-	});
-
-	const showToast = (message: string, type: ToastType) => {
-		setToast({ isVisible: true, message, type });
-	};
-
-	const handleCloseToast = () => {
-		setToast((prev) => ({ ...prev, isVisible: false }));
-	};
+	const toast = useAppToast();
 
 	return (
 		<div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -92,14 +74,14 @@ export default function UITestPage() {
 						</h2>
 					</div>
 					<p className="text-sm text-gray-400">
-						Trigger different status notifications that appear at the bottom
-						right.
+						Trigger different status notifications that appear at the top right
+						with smooth animations.
 					</p>
 
 					<div className="flex flex-col gap-3">
 						<button
 							onClick={() =>
-								showToast("Operation completed successfully!", "success")
+								toast.success("Operation completed successfully!", "Success")
 							}
 							className="flex items-center justify-between px-6 py-4 bg-green-50 text-green-700 rounded-2xl font-bold hover:bg-green-100 transition-all group"
 						>
@@ -114,7 +96,7 @@ export default function UITestPage() {
 
 						<button
 							onClick={() =>
-								showToast("Something went wrong with the server.", "error")
+								toast.error("Something went wrong with the server.", "Error")
 							}
 							className="flex items-center justify-between px-6 py-4 bg-red-50 text-red-700 rounded-2xl font-bold hover:bg-red-100 transition-all group"
 						>
@@ -129,7 +111,28 @@ export default function UITestPage() {
 
 						<button
 							onClick={() =>
-								showToast("New update available for this project.", "info")
+								toast.warning(
+									"Please review your changes before proceeding.",
+									"Warning",
+								)
+							}
+							className="flex items-center justify-between px-6 py-4 bg-amber-50 text-amber-700 rounded-2xl font-bold hover:bg-amber-100 transition-all group"
+						>
+							<div className="flex items-center gap-3">
+								<Info size={20} /> Warning Toast
+							</div>
+							<PlayCircle
+								size={18}
+								className="opacity-0 group-hover:opacity-100 transition-opacity"
+							/>
+						</button>
+
+						<button
+							onClick={() =>
+								toast.info(
+									"New update available for this project.",
+									"Information",
+								)
 							}
 							className="flex items-center justify-between px-6 py-4 bg-blue-50 text-blue-700 rounded-2xl font-bold hover:bg-blue-100 transition-all group"
 						>
@@ -165,7 +168,7 @@ export default function UITestPage() {
 				</section>
 			</div>
 
-			{/*  Data & Navigation (The New Section) */}
+			{/* Data & Navigation Section */}
 			<section className="space-y-6">
 				<div className="flex items-center gap-4">
 					<div className="p-3 bg-[#D9E392] rounded-2xl text-[#1E4637]">
@@ -189,22 +192,34 @@ export default function UITestPage() {
 							activeTab={activeTab}
 							onChange={setActiveTab}
 						/>
+						<div className="mt-2 text-sm text-gray-500 ml-4">
+							Currently viewing:{" "}
+							<span className="font-semibold text-[#1E4637]">{activeTab}</span>
+						</div>
 					</div>
 
-					{/* Component 2: Unified Control Row */}
+					{/* Component 2: Searchable Dropdown */}
 					<div className="space-y-3">
 						<p className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-4">
-							Control Row (Dropdown + Search)
+							Searchable Dropdown
 						</p>
 						<div className="flex flex-col lg:flex-row items-center gap-4 w-full">
 							<SearchableDropdown
 								options={MOCK_INSTITUTIONS}
-								onSelect={(id) => console.log("Selected:", id)}
+								onSelect={(id) => {
+									const selected = MOCK_INSTITUTIONS.find(
+										(opt) => opt.id === id,
+									);
+									toast.success(
+										`You selected: ${selected?.label}`,
+										"Selection Confirmed",
+									);
+								}}
 							/>
 						</div>
 					</div>
 
-					{/* Component 3: Data Table (Includes Pagination) */}
+					{/* Component 3: Data Table */}
 					<div className="space-y-3">
 						<p className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-4">
 							Data Table & Pagination
@@ -238,16 +253,19 @@ export default function UITestPage() {
 					<>
 						<button
 							onClick={() => setIsModalOpen(false)}
-							className="px-6 py-2 text-sm font-bold text-gray-400 hover:text-gray-600"
+							className="px-6 py-2 text-sm font-bold text-gray-400 hover:text-gray-600 transition-colors"
 						>
 							Cancel
 						</button>
 						<button
 							onClick={() => {
 								setIsModalOpen(false);
-								showToast("Settings applied successfully", "success");
+								toast.success(
+									"Your changes have been saved successfully!",
+									"Settings Applied",
+								);
 							}}
-							className="px-6 py-2 bg-[#1E4637] text-white rounded-xl text-sm font-bold"
+							className="px-6 py-2 bg-[#1E4637] text-white rounded-xl text-sm font-bold hover:bg-[#163529] transition-colors"
 						>
 							Save Changes
 						</button>
@@ -262,20 +280,12 @@ export default function UITestPage() {
 					</p>
 					<div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
 						<p className="text-xs text-amber-700 font-medium">
-							<strong>Tip:</strong> You can pass any JSX content here, including
-							complex forms or data tables.
+							<strong>💡 Tip:</strong> You can pass any JSX content here,
+							including complex forms or data tables.
 						</p>
 					</div>
 				</div>
 			</Modal>
-
-			{/* TOAST INSTANCE */}
-			<Toast
-				isVisible={toast.isVisible}
-				message={toast.message}
-				type={toast.type}
-				onClose={handleCloseToast}
-			/>
 		</div>
 	);
 }

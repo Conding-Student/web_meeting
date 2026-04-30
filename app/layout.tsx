@@ -3,8 +3,8 @@ import "./globals.css";
 import { ToastContainer } from "@/shared/ui/ToastContainer";
 
 export const metadata: Metadata = {
-  title: "Enterprise Portfolio Management",
-  description: "Next.js Enterprise Template",
+  title: "NextJS Frontend Template",
+  description: "Next.js Frontend Template",
 };
 
 export default function RootLayout({
@@ -13,10 +13,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className="antialiased">
-        <ToastContainer />
         {children}
+        <ToastContainer />
       </body>
     </html>
   );

@@ -300,59 +300,112 @@ npm run dev`}</code>
 									</h2>
 									<div className="bg-gray-900 rounded-xl p-6 overflow-x-auto">
 										<pre className="text-gray-300 text-sm font-mono">
-											<code>{`📁 next_template_v1/
-├── 📁 app/
-│   ├── 📁 (auth)/              # Authentication routes
-│   │   └── 📁 featureOne/
-│   │       ├── 📁 components/
-│   │       ├── 📁 hooks/
-│   │       ├── 📁 models/
-│   │       └── 📁 services/
-│   ├── 📁 (private)/           # Protected routes
-│   │   ├── 📁 dashboard/
-│   │   ├── 📁 staff/
-│   │   └── 📁 ui-test/
-│   ├── 📁 (public)/            # Public routes
-│   │   ├── 📁 about/
-│   │   ├── 📁 signin/
-│   │   └── 📁 unauthorized/
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx
-│
-├── 📁 nginx_config/
-│   └── nginx.conf
-│
-├── 📁 public/                  # Static assets
-│
-├── 📁 services/                # API & Business logic
-│   ├── 📁 api/
-│   │   ├── ApiEndpoint.ts
-│   │   ├── ApiError.ts
-│   │   ├── ApiWrapper.ts
-│   │   └── GlobalApiResponse.ts
-│   └── 📁 integration/
-│       ├── 📁 auth/
-│       └── 📁 sample/
-│
-├── 📁 shared/                  # Reusable components
-│   ├── 📁 layout/
-│   │   ├── Footer.tsx
-│   │   ├── Header.tsx
-│   │   └── Sidebar.tsx
-│   └── 📁 ui/
-│       ├── Modal.tsx
-│       ├── Toast.tsx
-│       ├── DataTable.tsx
-│       └── SearchableDropdown.tsx
-│
-├── .env
-├── .gitignore
-├── Dockerfile
-├── next.config.ts
-├── package.json
-├── README.md
-└── tsconfig.json`}</code>
+											<code>{`
+└── 📁next_template_v1
+    └── 📁app
+        └── 📁(auth)
+            └── 📁featureOne
+                └── 📁components
+                └── 📁hooks
+                └── 📁models
+                └── 📁services
+                ├── page.tsx
+            └── 📁login
+                └── 📁component
+                    ├── LoginForm.tsx
+                └── 📁hook
+                    ├── loginHook.ts
+                ├── page.tsx
+        └── 📁(private)
+            └── 📁dashboard
+                └── 📁components
+                    ├── ProjectList.tsx
+                    ├── StatCards.tsx
+                ├── page.tsx
+            └── 📁error-handler
+                └── 📁404
+                    ├── page.tsx
+                └── 📁stay-tuned
+                    ├── page.tsx
+            └── 📁featureOnePrivate
+                └── 📁components
+                └── 📁hooks
+                └── 📁models
+                └── 📁services
+            └── 📁staff
+                ├── page.tsx
+            └── 📁ui-test
+                ├── page.tsx
+            ├── layout.tsx
+        └── 📁(public)
+            └── 📁about
+            └── 📁signin
+                └── 📁components
+                └── 📁hooks
+                └── 📁models
+                └── 📁services
+            └── 📁unauthorized
+                └── 📁components
+                └── 📁hooks
+                └── 📁models
+                └── 📁services
+            ├── layout.tsx
+        └── 📁api
+            └── 📁auth
+                └── 📁login
+                    ├── route.ts
+        ├── globals.css
+        ├── layout.tsx
+        ├── page.tsx
+    └── 📁hooks
+        ├── useApi.ts
+    └── 📁nginx_config
+        ├── nginx.conf
+    └── 📁public
+        ├── Bakawan_Logo.png
+    └── 📁services
+        └── 📁api
+            ├── ApiEndpoint.ts
+            ├── ApiHelper.ts
+            ├── ApiWrapper.ts
+        └── 📁integration
+            └── 📁auth
+                ├── login.ts
+                ├── logout.ts
+            └── 📁sample
+                ├── sample.ts
+    └── 📁shared
+        └── 📁layout
+            ├── Footer.tsx
+            ├── Header.tsx
+            ├── Sidebar.tsx
+        └── 📁types
+        └── 📁ui
+            ├── BoilerplateModal.tsx
+            ├── ComingSoon.tsx
+            ├── DataTable.tsx
+            ├── Modal.tsx
+            ├── NotFound.tsx
+            ├── SearchableDropdown.tsx
+            ├── SegmentedTabs.tsx
+            ├── TablePagination.tsx
+            ├── ToastContainer.tsx
+    ├── .env
+    ├── .gitignore
+    ├── AGENTS.md
+    ├── CLAUDE.md
+    ├── Dockerfile
+    ├── eslint.config.mjs
+    ├── mockData.ts
+    ├── next-env.d.ts
+    ├── next.config.ts
+    ├── package-lock.json
+    ├── package.json
+    ├── postcss.config.mjs
+    ├── proxy.ts
+    ├── README.md
+    └── tsconfig.json
+`}</code>
 										</pre>
 									</div>
 								</section>

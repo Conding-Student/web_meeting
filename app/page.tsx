@@ -23,7 +23,7 @@ export default function HeroPage() {
 								fill
 								className="object-contain"
 								priority
-								sizes="40px" // Added this to fix the performance warning
+								sizes="40px" 
 							/>
 						</div>
 						<div className="flex flex-col">
@@ -69,9 +69,6 @@ export default function HeroPage() {
 								className="group-hover:translate-x-1 transition-transform"
 							/>
 						</Link>
-						{/* <button className="flex items-center justify-center gap-2 px-10 py-4 bg-white text-gray-700 border-2 border-gray-100 rounded-2xl font-bold hover:border-[#e8d941] transition-all">
-						<Code2 size={20} /> View Boilerplate
-					</button> */}
 
 						<button
 							onClick={() => setShowBoilerplate(true)}
