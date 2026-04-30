@@ -95,12 +95,12 @@ export async function apiRequest<TReq = unknown, TRes = unknown>(
 
   const result = (await response.json()) as ApiResponse<TRes>;
 
-  // Session expired
   if (result.retCode === "104") {
+    const cookieStore = await cookies();
+    cookieStore.delete("token");
     throw createAuthError(result.message);
   }
 
-  // HTTP errors
   if (!response.ok) {
     throw createRequestError(
       result.message || `HTTP ${response.status}`,
@@ -109,5 +109,6 @@ export async function apiRequest<TReq = unknown, TRes = unknown>(
     );
   }
 
+  // ✅ Only reached on success
   return { data: result, status: response.status };
 }

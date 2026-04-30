@@ -13,7 +13,7 @@ export function useApi() {
     async <T = unknown>(
       url: string,
       fetchOptions?: RequestInit,
-    ): Promise<ApiResponse<T> | null> => {
+    ): Promise<ApiResponse<T>> => {
       try {
         const response = await fetch(url, {
           ...fetchOptions,
@@ -22,28 +22,37 @@ export function useApi() {
 
         const data = (await response.json()) as ApiResponse<T>;
 
-        if (!response.ok) {
-          toast.error(data.message || `HTTP ${response.status}`);
-          return null;
+        // ✅ Handle session expiry (auto-handle, don't throw)
+        if (data.retCode === "104") {
+          toast.warning(data.message || "Session expired");
+          router.push("/login?reason=session_expired");
+          throw new Error("Session expired");
         }
 
+        // ✅ Handle HTTP errors - THROW so caller can catch
+        if (!response.ok) {
+          const error = new Error(
+            data.message || `HTTP ${response.status}`,
+          ) as ApiResponse<T> & Error;
+          Object.assign(error, {
+            retCode: data.retCode,
+            statusCode: response.status,
+          });
+          throw error;
+        }
+
+        console.log("SUCCESS");
         return data;
       } catch (error) {
-        if (isApiError(error) && error.type === "session") {
-          toast.warning(error.message || "Session expired");
-          router.push("/login?reason=session_expired");
-          return null;
+        // Re-throw API errors so caller can handle them
+        if (error instanceof Error && error.message !== "Session expired") {
+          throw error;
         }
 
-        // ✅ REQUEST ERRORS: RE-THROW for custom handling
-        if (isApiError(error) && error.type === "request") {
-          throw error; // 🔥 Let useLogin/useProfile/etc. handle
-        }
-
-        // ✅ NETWORK ERRORS: Generic toast
+        // Network/JSON errors - show toast and throw
         console.error("Network error:", error);
         toast.error("Network error. Please try again.");
-        return null;
+        throw error;
       }
     },
     [router, toast],

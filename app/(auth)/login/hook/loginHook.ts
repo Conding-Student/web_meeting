@@ -1,19 +1,14 @@
 "use client";
 
 import { useApi } from "@/hooks/useApi";
-import { isApiError } from "@/services/api/ApiHelper";
 import { useAppToast } from "@/shared/ui/ToastContainer";
 import { useRouter } from "next/navigation";
 import { useState, useCallback } from "react";
 
-interface LoginData {
-  token: string;
-  otp?: string;
-}
-
 export function useLogin() {
   const [staffId, setStaffId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { request } = useApi();
   const toast = useAppToast();
   const router = useRouter();
@@ -21,38 +16,29 @@ export function useLogin() {
   const handleSubmit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-
       setLoading(true);
+      setError(null);
 
       try {
-        const response = await request<LoginData>("/api/auth/login", {
+        const response = await request("/api/auth/login", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ staff_id: staffId.trim() }),
         });
 
-        // Session expired auto-handled by useApi
-        if (!response) return;
+        console.log("Login API response:", response);
+        toast.success(response?.message || "Login successful");
+        router.push("/dashboard");
 
-        if (response.retCode === "0") {
-          if (response.data?.otp) {
-            toast.success("OTP required");
-            router.push(`/verify-otp?staff_id=${staffId.trim()}`);
-          } else {
-            toast.success("Login successful");
-            router.push("/");
-          }
-          return;
-        }
-
-        // Business errors already thrown by useApi
-        // This won't be reached for retCode !== "0"
+        return response;
       } catch (err: unknown) {
-        // ✅ CUSTOM LOGIN ERROR HANDLING
-        if (isApiError(err) && err.type === "request") {
-          toast.error("Invalid credentials");
+        // ✅ Now you can handle different error types
+        if (err instanceof Error) {
+          // Validation errors (400, etc.)
+          setError(err.message);
+          toast.error(err.message || "Invalid credentials");
         } else {
           // Unexpected errors
+          setError("Login failed");
           toast.error("Login failed");
         }
       } finally {
@@ -66,6 +52,7 @@ export function useLogin() {
     staffId,
     setStaffId,
     loading,
+    error,
     handleSubmit,
   };
 }

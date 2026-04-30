@@ -1,7 +1,7 @@
 // app/api/auth/login/route.ts
 
+import { isApiError } from "@/services/api/ApiHelper";
 import { apiRequest } from "@/services/api/ApiWrapper";
-import { handleApiError } from "@/services/api/RouteErrorHandler";
 import { NextRequest, NextResponse } from "next/server";
 
 interface LoginRequest {
@@ -26,31 +26,19 @@ export async function POST(request: NextRequest) {
     const result = await apiRequest<LoginRequest, LoginResponseData>("LOGIN", {
       body: { staff_id: body.staff_id.trim() },
     });
-
-    // If backend returns no data
-    if (!result.data.data) {
-      return NextResponse.json(
-        {
-          message: result.data.message || "Login failed",
-          retCode: result.data.retCode,
-        },
-        { status: 401 },
-      );
-    }
+    console.log("Login API result:", result);
+    console.log("SUCCESS ON ROUTE.TS");
 
     // ✅ Return success response with API status
-    return NextResponse.json(
-      {
-        message: result.data.message || "Login successful",
-        retCode: result.data.retCode,
-        data: {
-          token: result.data.data.token,
-          otp: result.data.data.otp,
-        },
-      },
-      { status: result.status },
-    );
+    return NextResponse.json(result.data);
   } catch (error) {
-    return await handleApiError(error);
+    console.log("ERROR ON ROUTE.TS");
+    if (isApiError(error)) {
+      // ✅ Cookie already deleted in apiRequest
+      return NextResponse.json(
+        { message: error.message, retCode: error.retCode },
+        { status: error.statusCode },
+      );
+    }
   }
 }
