@@ -25,7 +25,6 @@ export default function StatCards() {
               </div>
             </div>
             <div className="pt-4 border-t border-gray-50">
-              <p className="text-xs font-bold text-gray-400 uppercase mb-1">Remarks:</p>
               <p className="text-sm font-semibold text-[#05582E]">{stat.remarks}</p>
             </div>
           </div>

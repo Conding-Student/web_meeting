@@ -25,23 +25,24 @@ export default function proxy(request: NextRequest) {
   // Check token cookie for protected routes
   const token = request.cookies.get("token")?.value;
 
+// --- Uncomment this if you have a session timeout/auto logout feature/module ---
   // For API routes, return 401
-  if (pathname.startsWith("/api/")) {
-    if (!token) {
-      return NextResponse.json(
-        { error: "Unauthorized", message: "Session Expired", retCode: "104" },
-        { status: 401 },
-      );
-    }
-    return NextResponse.next();
-  }
+  // if (pathname.startsWith("/api/")) {
+  //   if (!token) {
+  //     return NextResponse.json(
+  //       { error: "Unauthorized", message: "Session Expired", retCode: "104" },
+  //       { status: 401 },
+  //     );
+  //   }
+  //   return NextResponse.next();
+  // }
 
   // For pages, redirect to unauthorized
-  if (!token) {
-    const unauthorizedUrl = new URL("/unauthorized", request.url);
-    unauthorizedUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(unauthorizedUrl);
-  }
+  // if (!token) {
+  //   const unauthorizedUrl = new URL("/unauthorized", request.url);
+  //   unauthorizedUrl.searchParams.set("redirect", pathname);
+  //   return NextResponse.redirect(unauthorizedUrl);
+  // }
 
   return NextResponse.next();
 }
