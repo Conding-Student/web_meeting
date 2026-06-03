@@ -33,7 +33,7 @@ npm run type-check # Run TypeScript type checking
 ## Architecture Overview
 This template follows Next.js App Router conventions with route grouping for authentication-based access control:
 
-- **`(auth)`** - Authentication-required routes (e.g., dashboard, settings)
+- **`(auth)`** - Authentication group folder (requires login)	Dashboard, Profile, Settings
 - **`(private)`** - Private routes with shared layout (sidebar, header)
 - **`(public)`** - Publicly accessible routes (landing page, about, login)
 - Rule: Each route group must have its own layout.tsx for consistent UI/authentication handling.
@@ -71,6 +71,38 @@ shared/
 └── types/           # Global TypeScript definitions
 
 ### UI Component Standards
+This template uses **lucide-react** for icons. 
+**Why lucide-react?**
+- Tree-shakeable: Only icons you use are bundled
+- Consistent design system
+- TypeScript support out of the box
+- Customizable size and styling via props
+### Icon Usage Example
+ 
+```tsx
+import { ArrowRight, Menu, User, Settings } from 'lucide-react';
+ 
+// Basic usage
+<ArrowRight size={20} />
+ 
+// With styling
+<ArrowRight 
+  size={20} 
+  className="text-blue-500" 
+/>
+ 
+// With animations
+<ArrowRight
+  size={20}
+  className="group-hover:translate-x-1 transition-transform"
+/>
+ 
+// Common patterns
+<Menu className="w-5 h-5" />
+<User size={24} strokeWidth={1.5} />
+```
+
+
 Component Promotion Rule
 - Local: If a component is used in only one page, keep it in that route's components/ folder.
 
