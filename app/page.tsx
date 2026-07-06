@@ -58,6 +58,8 @@ export default function HeroPage() {
 					</p>
 
 					{/* CTA Section */}
+
+
 					<div className="flex flex-col sm:flex-row gap-5">
 						<Link
 							href="/dashboard"
@@ -68,6 +70,24 @@ export default function HeroPage() {
 								size={20}
 								className="group-hover:translate-x-1 transition-transform"
 							/>
+						</Link>
+
+						<Link
+							href="/videos"
+							className="group flex items-center justify-center gap-3 px-10 py-4 bg-gray-900 text-white rounded-2xl font-bold hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-gray-900/20"
+						>
+							Attention Prototype
+							<ArrowRight
+								size={20}
+								className="group-hover:translate-x-1 transition-transform"
+							/>
+						</Link>
+
+						<Link
+						href="/meeting/test-room"
+						className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-white"
+						>
+						Start Meeting
 						</Link>
 
 						<button
