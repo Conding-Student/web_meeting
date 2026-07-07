@@ -75,12 +75,14 @@ type AttentionMonitorProps = {
   roomName: string;
   participantName: string;
   warningDelayMs?: number;
+  alertResendIntervalMs?: number;
 };
 
 export default function AttentionMonitor({
   roomName,
   participantName,
   warningDelayMs = 2000,
+  alertResendIntervalMs = 5000,
 }: AttentionMonitorProps) {
   const { localParticipant } = useLocalParticipant();
   const { send } = useDataChannel(ATTENTION_TOPIC);
@@ -95,8 +97,9 @@ export default function AttentionMonitor({
   const pendingIssueRef = useRef<MonitorIssue | null>(null);
   const pendingIssueStartRef = useRef<number | null>(null);
 
-  const activeAlertRef = useRef(false);
-  const lastSentIssueRef = useRef<AlertIssue | null>(null);
+    const activeAlertRef = useRef(false);
+    const lastSentIssueRef = useRef<AlertIssue | null>(null);
+    const lastAlertSentAtRef = useRef<number>(0);
 
   const [cameraTrack, setCameraTrack] = useState<MediaStreamTrack | null>(null);
   const [issue, setIssue] = useState<MonitorIssue>("LOADING");
@@ -371,9 +374,10 @@ export default function AttentionMonitor({
       if (activeAlertRef.current) {
         activeAlertRef.current = false;
         lastSentIssueRef.current = null;
+        lastAlertSentAtRef.current = 0;
 
         sendAttentionEvent("ATTENTION_RECOVERED", "LOOKING", 0);
-      }
+        }
 
       setIssue("LOOKING");
       setShowWarning(false);
@@ -415,13 +419,16 @@ export default function AttentionMonitor({
     }
 
     const shouldSendAlert =
-      !activeAlertRef.current || lastSentIssueRef.current !== nextIssue;
+    !activeAlertRef.current ||
+    lastSentIssueRef.current !== nextIssue ||
+    now - lastAlertSentAtRef.current >= alertResendIntervalMs;
 
     if (shouldSendAlert) {
-      activeAlertRef.current = true;
-      lastSentIssueRef.current = nextIssue;
+    activeAlertRef.current = true;
+    lastSentIssueRef.current = nextIssue;
+    lastAlertSentAtRef.current = now;
 
-      sendAttentionEvent("ATTENTION_ALERT", nextIssue, durationSeconds);
+    sendAttentionEvent("ATTENTION_ALERT", nextIssue, durationSeconds);
     }
   }
 

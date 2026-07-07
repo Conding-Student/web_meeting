@@ -2,10 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useDataChannel } from "@livekit/components-react";
-import {
-  ATTENTION_TOPIC,
-  type AttentionEvent,
-} from "./attentionEvents";
+import { ATTENTION_TOPIC, type AttentionEvent } from "./attentionEvents";
 import styles from "./MeetingRoom.module.css";
 
 type ParticipantStatus = {
@@ -30,18 +27,21 @@ export default function ProctorAlertPanel({ roomName }: ProctorAlertPanelProps) 
   const handleMessage = useCallback(
     (msg: any) => {
       try {
-        const rawPayload = msg?.payload ?? msg?.data;
+        const rawPayload = msg?.payload ?? msg?.data ?? msg;
 
         if (!rawPayload) return;
 
-        const text = new TextDecoder().decode(rawPayload);
+        const text = decodePayload(rawPayload);
+
+        if (!text) return;
+
         const event = JSON.parse(text) as AttentionEvent;
 
         if (!event?.type || event.roomName !== roomName) {
           return;
         }
 
-        setEvents((prev) => [event, ...prev].slice(0, 25));
+        setEvents((prev) => [event, ...prev].slice(0, 30));
 
         setStatuses((prev) => ({
           ...prev,
@@ -63,58 +63,48 @@ export default function ProctorAlertPanel({ roomName }: ProctorAlertPanelProps) 
 
   useDataChannel(ATTENTION_TOPIC, handleMessage);
 
-  const statusList = useMemo(() => {
-    return Object.values(statuses).sort((a, b) => {
-      if (a.isRecovered === b.isRecovered) {
+  const idleList = useMemo(() => {
+    return Object.values(statuses)
+      .filter((status) => !status.isRecovered)
+      .sort((a, b) => {
         return (
           new Date(b.lastUpdated).getTime() -
           new Date(a.lastUpdated).getTime()
         );
-      }
-
-      return a.isRecovered ? 1 : -1;
-    });
+      });
   }, [statuses]);
 
   return (
     <aside className={styles.proctorPanel}>
       <div className={styles.proctorPanelHeader}>
         <div>
-          <p className={styles.proctorEyebrow}>Proctor</p>
-          <h2>Attention Alerts</h2>
+          <p className={styles.proctorEyebrow}>Host / Proctor</p>
+          <h2>Idle Participants</h2>
         </div>
 
-        <div className={styles.proctorCount}>{events.length}</div>
+        <div className={styles.proctorCount}>{idleList.length}</div>
       </div>
 
       <div className={styles.proctorSection}>
-        <h3>Current Status</h3>
+        <h3>Current Idle Participants</h3>
 
-        {statusList.length === 0 ? (
+        {idleList.length === 0 ? (
           <p className={styles.proctorEmpty}>
-            No attention alerts received yet.
+            No idle participants right now.
           </p>
         ) : (
           <div className={styles.proctorStatusList}>
-            {statusList.map((status) => (
+            {idleList.map((status) => (
               <div
                 key={status.participantIdentity}
-                className={
-                  status.isRecovered
-                    ? styles.proctorStatusOk
-                    : styles.proctorStatusWarn
-                }
+                className={styles.proctorStatusWarn}
               >
                 <div>
                   <strong>{status.participantName}</strong>
                   <span>{formatIssue(status.issue)}</span>
                 </div>
 
-                <small>
-                  {status.isRecovered
-                    ? "Recovered"
-                    : `${status.durationSeconds}s`}
-                </small>
+                <small>{status.durationSeconds}s</small>
               </div>
             ))}
           </div>
@@ -147,6 +137,22 @@ export default function ProctorAlertPanel({ roomName }: ProctorAlertPanelProps) 
       </div>
     </aside>
   );
+}
+
+function decodePayload(payload: unknown) {
+  if (typeof payload === "string") {
+    return payload;
+  }
+
+  if (payload instanceof Uint8Array) {
+    return new TextDecoder().decode(payload);
+  }
+
+  if (payload instanceof ArrayBuffer) {
+    return new TextDecoder().decode(new Uint8Array(payload));
+  }
+
+  return "";
 }
 
 function formatIssue(issue: AttentionEvent["issue"]) {
