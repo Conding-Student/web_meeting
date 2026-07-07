@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Camera, Play, Square } from "lucide-react";
 
-const LESSON_VIDEO_SRC = "https://drive.google.com/uc?export=download&id=1GQNLk_aWUYl2noUjEknCDBphF0GnEMLm";;
+const LESSON_VIDEO_SRC =
+	"https://res.cloudinary.com/dxi2yyku4/video/upload/f_mp4,q_auto/375_cwrst9.mp4";
 
 type AttentionStatus =
 	| "idle"
@@ -309,7 +310,7 @@ export default function AttentionVideoPage() {
 		const lookingElapsed = now - lookingStartRef.current;
 
 		if (lookingElapsed >= RECOVERY_MS) {
-			resumeVideoAfterAttention();
+			void resumeVideoAfterAttention();
 		}
 	}
 
@@ -403,8 +404,9 @@ export default function AttentionVideoPage() {
 	function stopDetection() {
 		if (animationFrameRef.current !== null) {
 			cancelAnimationFrame(animationFrameRef.current);
-			animationFrameRef.current = null;
 		}
+
+		animationFrameRef.current = null;
 
 		if (cameraStreamRef.current) {
 			for (const track of cameraStreamRef.current.getTracks()) {
@@ -513,6 +515,7 @@ export default function AttentionVideoPage() {
 								src={LESSON_VIDEO_SRC}
 								controls
 								playsInline
+								preload="metadata"
 								className="w-full aspect-video bg-black"
 							/>
 						</div>
@@ -560,9 +563,9 @@ export default function AttentionVideoPage() {
 						<div className="rounded-2xl overflow-hidden bg-black">
 							<video
 								ref={cameraVideoRef}
+								autoPlay
 								muted
 								playsInline
-								autoPlay
 								className="w-full aspect-video bg-black scale-x-[-1]"
 							/>
 						</div>
@@ -580,7 +583,7 @@ export default function AttentionVideoPage() {
 							</h3>
 
 							<ul className="text-sm text-gray-500 leading-7 list-disc pl-5">
-								<li>6 seconds absent/not looking bago mag-pause.</li>
+								<li>2 seconds absent/not looking bago mag-pause.</li>
 								<li>800ms looking recovery bago mag-resume.</li>
 								<li>Camera frames are processed in browser.</li>
 								<li>False positives possible kapag madilim or malabo camera.</li>
