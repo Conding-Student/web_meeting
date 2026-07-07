@@ -1,11 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useLocalParticipant } from "@livekit/components-react";
+import {
+  useDataChannel,
+  useLocalParticipant,
+} from "@livekit/components-react";
 import { Track } from "livekit-client";
+import {
+  ATTENTION_TOPIC,
+  type AttentionEvent,
+} from "./attentionEvents";
 import styles from "./MeetingRoom.module.css";
 
-type AttentionIssue =
+type MonitorIssue =
   | "LOADING"
   | "LOOKING"
   | "NO_FACE"
@@ -14,6 +21,8 @@ type AttentionIssue =
   | "SLEEPING"
   | "CAMERA_OFF"
   | "ERROR";
+
+type AlertIssue = AttentionEvent["issue"];
 
 type Landmark = {
   x: number;
@@ -25,6 +34,10 @@ type FaceResult = {
   faceLandmarks?: Landmark[][];
 };
 
+type HandResult = {
+  landmarks?: Landmark[][];
+};
+
 type FaceLandmarkerLike = {
   detectForVideo: (
     video: HTMLVideoElement,
@@ -33,9 +46,19 @@ type FaceLandmarkerLike = {
   close?: () => void;
 };
 
+type HandLandmarkerLike = {
+  detectForVideo: (
+    video: HTMLVideoElement,
+    timestampMs: number
+  ) => HandResult;
+  close?: () => void;
+};
+
 type AnalysisResult = {
-  issue: AttentionIssue;
+  issue: MonitorIssue;
   faceCount: number;
+  handCount: number;
+  handOverEyes: boolean;
   eyeOpenRatio?: number;
   headOffsetX?: number;
   gazeX?: number;
@@ -44,47 +67,57 @@ type AnalysisResult = {
 };
 
 type DebugInfo = AnalysisResult & {
-  pendingIssue?: AttentionIssue | null;
+  pendingIssue?: MonitorIssue | null;
   pendingSeconds?: number;
 };
 
 type AttentionMonitorProps = {
+  roomName: string;
+  participantName: string;
   warningDelayMs?: number;
 };
 
 export default function AttentionMonitor({
-  warningDelayMs = 3000,
+  roomName,
+  participantName,
+  warningDelayMs = 2000,
 }: AttentionMonitorProps) {
   const { localParticipant } = useLocalParticipant();
+  const { send } = useDataChannel(ATTENTION_TOPIC);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const faceLandmarkerRef = useRef<FaceLandmarkerLike | null>(null);
+  const handLandmarkerRef = useRef<HandLandmarkerLike | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
   const lastVideoTimeRef = useRef<number>(-1);
 
-  const pendingIssueRef = useRef<AttentionIssue | null>(null);
+  const pendingIssueRef = useRef<MonitorIssue | null>(null);
   const pendingIssueStartRef = useRef<number | null>(null);
 
+  const activeAlertRef = useRef(false);
+  const lastSentIssueRef = useRef<AlertIssue | null>(null);
+
   const [cameraTrack, setCameraTrack] = useState<MediaStreamTrack | null>(null);
-  const [issue, setIssue] = useState<AttentionIssue>("LOADING");
+  const [issue, setIssue] = useState<MonitorIssue>("LOADING");
   const [showWarning, setShowWarning] = useState(false);
   const [warningSeconds, setWarningSeconds] = useState(0);
 
   const [debugInfo, setDebugInfo] = useState<DebugInfo>({
     issue: "LOADING",
     faceCount: 0,
+    handCount: 0,
+    handOverEyes: false,
     note: "Loading monitor",
   });
 
   useEffect(() => {
     let isMounted = true;
 
-    async function loadFaceLandmarker() {
+    async function loadLandmarkers() {
       try {
-        const { FaceLandmarker, FilesetResolver } = await import(
-          "@mediapipe/tasks-vision"
-        );
+        const { FaceLandmarker, HandLandmarker, FilesetResolver } =
+          await import("@mediapipe/tasks-vision");
 
         const vision = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
@@ -105,7 +138,21 @@ export default function AttentionMonitor({
           outputFacialTransformationMatrixes: false,
         });
 
+        const handLandmarker = await HandLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath:
+              "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task",
+            delegate: "GPU",
+          },
+          runningMode: "VIDEO",
+          numHands: 2,
+          minHandDetectionConfidence: 0.5,
+          minHandPresenceConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
+
         faceLandmarkerRef.current = faceLandmarker as FaceLandmarkerLike;
+        handLandmarkerRef.current = handLandmarker as HandLandmarkerLike;
 
         if (isMounted) {
           setIssue("LOOKING");
@@ -114,24 +161,28 @@ export default function AttentionMonitor({
           setDebugInfo({
             issue: "LOOKING",
             faceCount: 0,
-            note: "FaceLandmarker ready",
+            handCount: 0,
+            handOverEyes: false,
+            note: "Face and hand landmarkers ready",
           });
         }
       } catch (error) {
-        console.warn("FaceLandmarker loading warning:", error);
+        console.warn("Landmarker loading warning:", error);
 
         if (isMounted) {
           applyAttentionIssue("ERROR");
           setDebugInfo({
             issue: "ERROR",
             faceCount: 0,
-            note: "FaceLandmarker failed to load",
+            handCount: 0,
+            handOverEyes: false,
+            note: "Face or hand landmarker failed to load",
           });
         }
       }
     }
 
-    loadFaceLandmarker();
+    loadLandmarkers();
 
     return () => {
       isMounted = false;
@@ -140,7 +191,12 @@ export default function AttentionMonitor({
         faceLandmarkerRef.current.close();
       }
 
+      if (handLandmarkerRef.current?.close) {
+        handLandmarkerRef.current.close();
+      }
+
       faceLandmarkerRef.current = null;
+      handLandmarkerRef.current = null;
     };
   }, []);
 
@@ -175,6 +231,8 @@ export default function AttentionMonitor({
       setDebugInfo({
         issue: "CAMERA_OFF",
         faceCount: 0,
+        handCount: 0,
+        handOverEyes: false,
         note: "No active camera track",
       });
       return;
@@ -198,6 +256,8 @@ export default function AttentionMonitor({
         setDebugInfo({
           issue: "CAMERA_OFF",
           faceCount: 0,
+          handCount: 0,
+          handOverEyes: false,
           note: "Hidden monitor video cannot play",
         });
       });
@@ -211,6 +271,7 @@ export default function AttentionMonitor({
     function detectLoop() {
       const video = videoRef.current;
       const faceLandmarker = faceLandmarkerRef.current;
+      const handLandmarker = handLandmarkerRef.current;
 
       if (!cameraTrack) {
         applyAttentionIssue("CAMERA_OFF");
@@ -218,7 +279,7 @@ export default function AttentionMonitor({
         return;
       }
 
-      if (!video || !faceLandmarker) {
+      if (!video || !faceLandmarker || !handLandmarker) {
         animationFrameRef.current = requestAnimationFrame(detectLoop);
         return;
       }
@@ -232,12 +293,12 @@ export default function AttentionMonitor({
         if (video.currentTime !== lastVideoTimeRef.current) {
           lastVideoTimeRef.current = video.currentTime;
 
-          const result = faceLandmarker.detectForVideo(
-            video,
-            performance.now()
-          );
+          const timestamp = performance.now();
 
-          const analysis = analyzeFaceResult(result);
+          const faceResult = faceLandmarker.detectForVideo(video, timestamp);
+          const handResult = handLandmarker.detectForVideo(video, timestamp);
+
+          const analysis = analyzeFrame(faceResult, handResult);
 
           applyAttentionIssue(analysis.issue);
 
@@ -252,11 +313,13 @@ export default function AttentionMonitor({
           });
         }
       } catch (error) {
-        console.warn("Face detection warning:", error);
+        console.warn("Detection warning:", error);
         applyAttentionIssue("ERROR");
         setDebugInfo({
           issue: "ERROR",
           faceCount: 0,
+          handCount: 0,
+          handOverEyes: false,
           note: "detectForVideo failed",
         });
       }
@@ -275,10 +338,10 @@ export default function AttentionMonitor({
     };
   }, [cameraTrack, warningDelayMs]);
 
-  function getDelayForIssue(nextIssue: AttentionIssue) {
+  function getDelayForIssue(nextIssue: MonitorIssue) {
     switch (nextIssue) {
       case "SLEEPING":
-        return 1200;
+        return 900;
       case "MULTIPLE_FACES":
         return 1500;
       case "CAMERA_OFF":
@@ -294,12 +357,23 @@ export default function AttentionMonitor({
     }
   }
 
-  function applyAttentionIssue(nextIssue: AttentionIssue) {
+  function isAlertIssue(nextIssue: MonitorIssue): nextIssue is AlertIssue {
+    return nextIssue !== "LOADING";
+  }
+
+  function applyAttentionIssue(nextIssue: MonitorIssue) {
     const now = Date.now();
 
     if (nextIssue === "LOOKING") {
       pendingIssueRef.current = null;
       pendingIssueStartRef.current = null;
+
+      if (activeAlertRef.current) {
+        activeAlertRef.current = false;
+        lastSentIssueRef.current = null;
+
+        sendAttentionEvent("ATTENTION_RECOVERED", "LOOKING", 0);
+      }
 
       setIssue("LOOKING");
       setShowWarning(false);
@@ -322,18 +396,64 @@ export default function AttentionMonitor({
     const startedAt = pendingIssueStartRef.current ?? now;
     const durationMs = now - startedAt;
     const requiredDelayMs = getDelayForIssue(nextIssue);
+    const durationSeconds = Math.floor(durationMs / 1000);
 
     if (durationMs < requiredDelayMs) {
       setIssue("LOOKING");
       setShowWarning(false);
-      setWarningSeconds(Math.floor(durationMs / 1000));
+      setWarningSeconds(durationSeconds);
 
       return;
     }
 
     setIssue(nextIssue);
-    setWarningSeconds(Math.floor(durationMs / 1000));
+    setWarningSeconds(durationSeconds);
     setShowWarning(true);
+
+    if (!isAlertIssue(nextIssue)) {
+      return;
+    }
+
+    const shouldSendAlert =
+      !activeAlertRef.current || lastSentIssueRef.current !== nextIssue;
+
+    if (shouldSendAlert) {
+      activeAlertRef.current = true;
+      lastSentIssueRef.current = nextIssue;
+
+      sendAttentionEvent("ATTENTION_ALERT", nextIssue, durationSeconds);
+    }
+  }
+
+  function sendAttentionEvent(
+    type: AttentionEvent["type"],
+    eventIssue: AlertIssue,
+    durationSeconds: number
+  ) {
+    const event: AttentionEvent = {
+      id:
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random()}`,
+      type,
+      roomName,
+      participantName,
+      participantIdentity: localParticipant.identity || participantName,
+      issue: eventIssue,
+      durationSeconds,
+      timestamp: new Date().toISOString(),
+    };
+
+    const payload = new TextEncoder().encode(JSON.stringify(event));
+
+    Promise.resolve(
+      send(payload, {
+        topic: ATTENTION_TOPIC,
+        reliable: true,
+      })
+    ).catch((error) => {
+      console.warn("Failed to send attention event:", error);
+    });
   }
 
   function getWarningMessage() {
@@ -392,6 +512,12 @@ export default function AttentionMonitor({
           <span>Faces</span>
           <strong>{debugInfo.faceCount}</strong>
 
+          <span>Hands</span>
+          <strong>{debugInfo.handCount}</strong>
+
+          <span>Hand eyes</span>
+          <strong>{debugInfo.handOverEyes ? "YES" : "NO"}</strong>
+
           <span>Eye open</span>
           <strong>{formatNumber(debugInfo.eyeOpenRatio)}</strong>
 
@@ -415,8 +541,8 @@ export default function AttentionMonitor({
           <div>
             <h2>{getWarningMessage()}</h2>
             <p>
-              Detected for {warningSeconds}s. This is only a local warning for
-              now.
+              Detected for {warningSeconds}s. This alert is also sent to the
+              proctor view.
             </p>
           </div>
         </div>
@@ -425,13 +551,19 @@ export default function AttentionMonitor({
   );
 }
 
-function analyzeFaceResult(result: FaceResult): AnalysisResult {
-  const faces = result.faceLandmarks ?? [];
+function analyzeFrame(
+  faceResult: FaceResult,
+  handResult: HandResult
+): AnalysisResult {
+  const faces = faceResult.faceLandmarks ?? [];
+  const hands = handResult.landmarks ?? [];
 
   if (faces.length === 0) {
     return {
       issue: "NO_FACE",
       faceCount: 0,
+      handCount: hands.length,
+      handOverEyes: false,
       note: "No face landmarks",
     };
   }
@@ -440,6 +572,8 @@ function analyzeFaceResult(result: FaceResult): AnalysisResult {
     return {
       issue: "MULTIPLE_FACES",
       faceCount: faces.length,
+      handCount: hands.length,
+      handOverEyes: false,
       note: "More than one face",
     };
   }
@@ -447,6 +581,7 @@ function analyzeFaceResult(result: FaceResult): AnalysisResult {
   const face = faces[0];
 
   const nose = face[1];
+  const forehead = face[10];
 
   const leftEyeOuter = face[33];
   const leftEyeInner = face[133];
@@ -465,6 +600,7 @@ function analyzeFaceResult(result: FaceResult): AnalysisResult {
 
   if (
     !nose ||
+    !forehead ||
     !leftEyeOuter ||
     !leftEyeInner ||
     !rightEyeOuter ||
@@ -479,6 +615,8 @@ function analyzeFaceResult(result: FaceResult): AnalysisResult {
     return {
       issue: "LOOKING_AWAY",
       faceCount: 1,
+      handCount: hands.length,
+      handOverEyes: false,
       note: "Missing eye or iris landmarks",
     };
   }
@@ -542,18 +680,45 @@ function analyzeFaceResult(result: FaceResult): AnalysisResult {
 
   const eyesClosed = avgEyeOpenRatio < 0.11;
 
+    const handOverEyes = isHandCoveringEyesStrict(hands, {
+    leftEyeOuter,
+    leftEyeInner,
+    leftEyeTop,
+    leftEyeBottom,
+    rightEyeOuter,
+    rightEyeInner,
+    rightEyeTop,
+    rightEyeBottom,
+    });
+
   const faceTooFarFromCenter =
     nose.x < 0.12 || nose.x > 0.88 || nose.y < 0.08 || nose.y > 0.94;
+
+  if (handOverEyes) {
+    return {
+      issue: "SLEEPING",
+      faceCount: 1,
+      handCount: hands.length,
+      handOverEyes,
+      eyeOpenRatio: avgEyeOpenRatio,
+      headOffsetX,
+      gazeX: avgGazeX,
+      gazeY: avgGazeY,
+      note: "Hand covering eye area",
+    };
+  }
 
   if (eyesClosed) {
     return {
       issue: "SLEEPING",
       faceCount: 1,
+      handCount: hands.length,
+      handOverEyes,
       eyeOpenRatio: avgEyeOpenRatio,
       headOffsetX,
       gazeX: avgGazeX,
       gazeY: avgGazeY,
-      note: "Eyes closed / covered",
+      note: "Eyes closed",
     };
   }
 
@@ -561,6 +726,8 @@ function analyzeFaceResult(result: FaceResult): AnalysisResult {
     return {
       issue: "LOOKING_AWAY",
       faceCount: 1,
+      handCount: hands.length,
+      handOverEyes,
       eyeOpenRatio: avgEyeOpenRatio,
       headOffsetX,
       gazeX: avgGazeX,
@@ -572,12 +739,113 @@ function analyzeFaceResult(result: FaceResult): AnalysisResult {
   return {
     issue: "LOOKING",
     faceCount: 1,
+    handCount: hands.length,
+    handOverEyes,
     eyeOpenRatio: avgEyeOpenRatio,
     headOffsetX,
     gazeX: avgGazeX,
     gazeY: avgGazeY,
     note: "Looking",
   };
+}
+
+function isHandCoveringEyesStrict(
+  hands: Landmark[][],
+  eyePoints: {
+    leftEyeOuter: Landmark;
+    leftEyeInner: Landmark;
+    leftEyeTop: Landmark;
+    leftEyeBottom: Landmark;
+    rightEyeOuter: Landmark;
+    rightEyeInner: Landmark;
+    rightEyeTop: Landmark;
+    rightEyeBottom: Landmark;
+  }
+) {
+  if (hands.length === 0) {
+    return false;
+  }
+
+  const leftEyeBox = createExpandedBox(
+    [
+      eyePoints.leftEyeOuter,
+      eyePoints.leftEyeInner,
+      eyePoints.leftEyeTop,
+      eyePoints.leftEyeBottom,
+    ],
+    0.035,
+    0.045
+  );
+
+  const rightEyeBox = createExpandedBox(
+    [
+      eyePoints.rightEyeOuter,
+      eyePoints.rightEyeInner,
+      eyePoints.rightEyeTop,
+      eyePoints.rightEyeBottom,
+    ],
+    0.035,
+    0.045
+  );
+
+  // Finger tips and important finger joints only.
+  // Para hindi counted ang buong palm/hand kapag nasa cheek or lower face.
+  const importantHandPointIndexes = [
+    4, 8, 12, 16, 20, // fingertips
+    3, 7, 11, 15, 19, // upper finger joints
+  ];
+
+  let leftEyeHits = 0;
+  let rightEyeHits = 0;
+
+  for (const hand of hands) {
+    for (const index of importantHandPointIndexes) {
+      const point = hand[index];
+
+      if (!point) continue;
+
+      if (isPointInsideBox(point, leftEyeBox)) {
+        leftEyeHits += 1;
+      }
+
+      if (isPointInsideBox(point, rightEyeBox)) {
+        rightEyeHits += 1;
+      }
+    }
+  }
+
+  // Strict rule:
+  // kapag both hands tinatakluban mata
+  return leftEyeHits >= 1 && rightEyeHits >= 1;
+}
+
+function createExpandedBox(points: Landmark[], expandX: number, expandY: number) {
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+
+  return {
+    minX: Math.min(...xs) - expandX,
+    maxX: Math.max(...xs) + expandX,
+    minY: Math.min(...ys) - expandY,
+    maxY: Math.max(...ys) + expandY,
+  };
+}
+
+function isPointInsideBox(
+  point: Landmark,
+  box: {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+  }
+) {
+  return (
+    point.x >= box.minX &&
+    point.x <= box.maxX &&
+    point.y >= box.minY &&
+    point.y <= box.maxY
+  );
 }
 
 function normalizedPosition(value: number, pointA: number, pointB: number) {

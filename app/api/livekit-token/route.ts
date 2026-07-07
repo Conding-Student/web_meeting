@@ -22,6 +22,7 @@ async function createLiveKitToken(roomName: string, participantName: string) {
     roomJoin: true,
     canPublish: true,
     canSubscribe: true,
+    canPublishData: true,
   });
 
   const token = await accessToken.toJwt();

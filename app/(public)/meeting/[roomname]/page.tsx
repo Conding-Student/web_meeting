@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useParams } from "next/navigation";
-import AttentionMonitor from "./AttentionMonitor";
+import { useParams, useSearchParams } from "next/navigation";
 import {
   LiveKitRoom,
   PreJoin,
   VideoConference,
 } from "@livekit/components-react";
+import AttentionMonitor from "./AttentionMonitor";
+import ProctorAlertPanel from "./ProctorAlertPanel";
 import styles from "./MeetingRoom.module.css";
 
 type UserChoices = {
@@ -18,6 +19,10 @@ type UserChoices = {
 
 export default function MeetingPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
+
+  const role = searchParams.get("role");
+  const isHost = role === "host" || role === "proctor";
 
   const roomName = useMemo(() => {
     const room = params?.roomname;
@@ -40,9 +45,11 @@ export default function MeetingPage() {
       setIsJoining(true);
       setError("");
 
-      const username =
-        values.username?.trim() ||
-        `Guest-${Math.floor(Math.random() * 10000)}`;
+      const fallbackName = isHost
+        ? "Host-Proctor"
+        : `Guest-${Math.floor(Math.random() * 10000)}`;
+
+      const username = values.username?.trim() || fallbackName;
 
       const res = await fetch("/api/livekit-token", {
         method: "POST",
@@ -88,8 +95,12 @@ export default function MeetingPage() {
             <div className={styles.logoCircle}>LK</div>
 
             <div>
-              <p className={styles.eyebrow}>Live Meeting</p>
-              <h1 className={styles.title}>Join room</h1>
+              <p className={styles.eyebrow}>
+                {isHost ? "Proctor Meeting" : "Live Meeting"}
+              </p>
+              <h1 className={styles.title}>
+                {isHost ? "Join as proctor" : "Join room"}
+              </h1>
             </div>
           </div>
 
@@ -99,7 +110,9 @@ export default function MeetingPage() {
           </div>
 
           <p className={styles.subtitle}>
-            Check your camera and microphone before entering the meeting.
+            {isHost
+              ? "Join as host/proctor to receive attention alerts from participants."
+              : "Check your camera and microphone before entering the meeting."}
           </p>
 
           {error && <div className={styles.errorBox}>{error}</div>}
@@ -112,7 +125,9 @@ export default function MeetingPage() {
           >
             <PreJoin
               defaults={{
-                username: `Guest-${Math.floor(Math.random() * 10000)}`,
+                username: isHost
+                  ? "Host-Proctor"
+                  : `Guest-${Math.floor(Math.random() * 10000)}`,
                 videoEnabled: true,
                 audioEnabled: true,
               }}
@@ -156,16 +171,25 @@ export default function MeetingPage() {
         }}
         onError={(err) => setError(err.message)}
       >
-        <AttentionMonitor />
+        {!isHost && (
+          <AttentionMonitor
+            roomName={roomName}
+            participantName={userChoices?.username ?? "Guest"}
+          />
+        )}
+
+        {isHost && <ProctorAlertPanel roomName={roomName} />}
 
         <header className={styles.meetingHeader}>
           <div>
-            <p className={styles.eyebrow}>Now in meeting</p>
+            <p className={styles.eyebrow}>
+              {isHost ? "Proctor View" : "Now in meeting"}
+            </p>
             <h1 className={styles.meetingTitle}>{roomName}</h1>
           </div>
 
           <div className={styles.userPill}>
-            {userChoices?.username ?? "Guest"}
+            {isHost ? "Host / Proctor" : userChoices?.username ?? "Guest"}
           </div>
         </header>
 
