@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import AttentionMonitor from "./AttentionMonitor";
 import {
   LiveKitRoom,
   PreJoin,
@@ -130,7 +131,7 @@ export default function MeetingPage() {
                 return true;
               }}
               onError={(err) => setError(err.message)}
-              persistUserChoices={true}
+              persistUserChoices={false}
             />
           </div>
         </section>
@@ -155,6 +156,8 @@ export default function MeetingPage() {
         }}
         onError={(err) => setError(err.message)}
       >
+        <AttentionMonitor />
+
         <header className={styles.meetingHeader}>
           <div>
             <p className={styles.eyebrow}>Now in meeting</p>
