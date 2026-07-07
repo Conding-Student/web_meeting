@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ToastContainer } from "@/shared/ui/ToastContainer";
+import "@livekit/components-styles";
 
 export const metadata: Metadata = {
   title: "NextJS Frontend Template",

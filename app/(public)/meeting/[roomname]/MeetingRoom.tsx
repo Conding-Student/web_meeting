@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { LiveKitRoom, VideoConference } from "@livekit/components-react";
+import styles from "./MeetingRoom.module.css";
 
 type MeetingRoomProps = {
   roomName: string;
@@ -14,96 +15,129 @@ export default function MeetingRoom({ roomName }: MeetingRoomProps) {
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState("");
 
- async function joinMeeting() {
-  try {
-    setError("");
-
-    if (!participantName.trim()) {
-      setError("Please enter your name.");
-      return;
-    }
-
-    setIsJoining(true);
-
-    const response = await fetch("/api/livekit-token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        roomName,
-        participantName: participantName.trim(),
-      }),
-    });
-
-    const text = await response.text();
-
-    let data: any = {};
+  async function joinMeeting() {
     try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error(`Invalid API response: ${text}`);
-    }
+      setError("");
 
-    if (!response.ok) {
-      throw new Error(data.error || "Failed to join meeting");
-    }
+      if (!participantName.trim()) {
+        setError("Please enter your name.");
+        return;
+      }
 
-    setToken(data.token);
-    setServerUrl(data.serverUrl);
-  } catch (err: any) {
-    console.error("Join meeting error:", err);
-    setError(err.message || "Hindi maka-join sa meeting.");
-  } finally {
-    setIsJoining(false);
+      setIsJoining(true);
+
+      const response = await fetch("/api/livekit-token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          roomName,
+          participantName: participantName.trim(),
+        }),
+      });
+
+      const text = await response.text();
+
+      let data: any = {};
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(`Invalid API response: ${text}`);
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to join meeting");
+      }
+
+      setToken(data.token);
+      setServerUrl(data.serverUrl);
+    } catch (err: any) {
+      console.error("Join meeting error:", err);
+      setError(err.message || "Hindi maka-join sa meeting.");
+    } finally {
+      setIsJoining(false);
+    }
   }
-}
 
   if (!token || !serverUrl) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gray-950 text-white p-6">
-        <div className="w-full max-w-md bg-gray-900 p-6 rounded-2xl border border-gray-800">
-          <h1 className="text-3xl font-bold mb-2">Join Meeting</h1>
+      <main className={styles.joinPage}>
+        <section className={styles.joinCard}>
+          <div className={styles.logo}>LK</div>
 
-          <p className="text-gray-300 mb-5">
-            Room: <span className="font-semibold">{roomName}</span>
+          <p className={styles.label}>Live Meeting</p>
+
+          <h1 className={styles.title}>Join Meeting</h1>
+
+          <p className={styles.subtitle}>
+            Enter your name before joining the room.
           </p>
+
+          <div className={styles.roomBadge}>
+            <span>Room</span>
+            <strong>{roomName}</strong>
+          </div>
 
           <input
             value={participantName}
             onChange={(e) => setParticipantName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                joinMeeting();
+              }
+            }}
             placeholder="Enter your name"
-            className="w-full px-4 py-3 rounded-lg text-black mb-3"
+            className={styles.input}
           />
 
-          {error && <p className="text-red-400 mb-3">{error}</p>}
+          {error && <div className={styles.errorBox}>{error}</div>}
 
           <button
             onClick={joinMeeting}
             disabled={isJoining}
-            className="w-full py-3 rounded-lg bg-white text-black font-semibold disabled:opacity-60"
+            className={styles.joinButton}
           >
             {isJoining ? "Joining..." : "Join now"}
           </button>
-        </div>
+
+          <p className={styles.footerNote}>
+            Make sure your camera and microphone permission are allowed.
+          </p>
+        </section>
       </main>
     );
   }
 
   return (
-    <main className="h-screen bg-black">
+    <main className={styles.meetingPage}>
       <LiveKitRoom
         token={token}
         serverUrl={serverUrl}
         connect={true}
         video={true}
         audio={true}
+        data-lk-theme="default"
+        className={styles.livekitRoom}
         onDisconnected={() => {
           setToken("");
           setServerUrl("");
         }}
       >
-        <VideoConference />
+        <header className={styles.meetingHeader}>
+          <div>
+            <p className={styles.label}>Now in meeting</p>
+            <h1 className={styles.meetingTitle}>{roomName}</h1>
+          </div>
+
+          <div className={styles.participantPill}>
+            {participantName || "Guest"}
+          </div>
+        </header>
+
+        <section className={styles.conferenceArea}>
+          <VideoConference />
+        </section>
       </LiveKitRoom>
     </main>
   );
