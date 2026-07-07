@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Camera, Play, Square } from "lucide-react";
 
-const LESSON_VIDEO_SRC = "/myvideo.mov";
+const LESSON_VIDEO_SRC = "https://drive.google.com/uc?export=download&id=1GQNLk_aWUYl2noUjEknCDBphF0GnEMLm";;
 
 type AttentionStatus =
 	| "idle"
