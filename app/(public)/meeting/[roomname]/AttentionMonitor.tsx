@@ -33,12 +33,27 @@ type FaceLandmarkerLike = {
   close?: () => void;
 };
 
+type AnalysisResult = {
+  issue: AttentionIssue;
+  faceCount: number;
+  eyeOpenRatio?: number;
+  headOffsetX?: number;
+  gazeX?: number;
+  gazeY?: number;
+  note?: string;
+};
+
+type DebugInfo = AnalysisResult & {
+  pendingIssue?: AttentionIssue | null;
+  pendingSeconds?: number;
+};
+
 type AttentionMonitorProps = {
   warningDelayMs?: number;
 };
 
 export default function AttentionMonitor({
-  warningDelayMs = 2500,
+  warningDelayMs = 3000,
 }: AttentionMonitorProps) {
   const { localParticipant } = useLocalParticipant();
 
@@ -47,13 +62,20 @@ export default function AttentionMonitor({
   const animationFrameRef = useRef<number | null>(null);
 
   const lastVideoTimeRef = useRef<number>(-1);
-  const issueStartTimeRef = useRef<number | null>(null);
-  const lastIssueRef = useRef<AttentionIssue>("LOADING");
+
+  const pendingIssueRef = useRef<AttentionIssue | null>(null);
+  const pendingIssueStartRef = useRef<number | null>(null);
 
   const [cameraTrack, setCameraTrack] = useState<MediaStreamTrack | null>(null);
   const [issue, setIssue] = useState<AttentionIssue>("LOADING");
   const [showWarning, setShowWarning] = useState(false);
   const [warningSeconds, setWarningSeconds] = useState(0);
+
+  const [debugInfo, setDebugInfo] = useState<DebugInfo>({
+    issue: "LOADING",
+    faceCount: 0,
+    note: "Loading monitor",
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -79,20 +101,32 @@ export default function AttentionMonitor({
           minFaceDetectionConfidence: 0.5,
           minFacePresenceConfidence: 0.5,
           minTrackingConfidence: 0.5,
-          outputFaceBlendshapes: true,
+          outputFaceBlendshapes: false,
           outputFacialTransformationMatrixes: false,
         });
 
         faceLandmarkerRef.current = faceLandmarker as FaceLandmarkerLike;
 
         if (isMounted) {
-          updateIssue("LOOKING");
+          setIssue("LOOKING");
+          setShowWarning(false);
+          setWarningSeconds(0);
+          setDebugInfo({
+            issue: "LOOKING",
+            faceCount: 0,
+            note: "FaceLandmarker ready",
+          });
         }
       } catch (error) {
         console.warn("FaceLandmarker loading warning:", error);
 
         if (isMounted) {
-          updateIssue("ERROR");
+          applyAttentionIssue("ERROR");
+          setDebugInfo({
+            issue: "ERROR",
+            faceCount: 0,
+            note: "FaceLandmarker failed to load",
+          });
         }
       }
     }
@@ -137,7 +171,12 @@ export default function AttentionMonitor({
 
     if (!cameraTrack) {
       video.srcObject = null;
-      updateIssue("CAMERA_OFF");
+      applyAttentionIssue("CAMERA_OFF");
+      setDebugInfo({
+        issue: "CAMERA_OFF",
+        faceCount: 0,
+        note: "No active camera track",
+      });
       return;
     }
 
@@ -155,7 +194,12 @@ export default function AttentionMonitor({
       })
       .catch((error) => {
         console.warn("Attention monitor video play warning:", error);
-        updateIssue("CAMERA_OFF");
+        applyAttentionIssue("CAMERA_OFF");
+        setDebugInfo({
+          issue: "CAMERA_OFF",
+          faceCount: 0,
+          note: "Hidden monitor video cannot play",
+        });
       });
 
     return () => {
@@ -169,7 +213,7 @@ export default function AttentionMonitor({
       const faceLandmarker = faceLandmarkerRef.current;
 
       if (!cameraTrack) {
-        updateIssue("CAMERA_OFF");
+        applyAttentionIssue("CAMERA_OFF");
         animationFrameRef.current = requestAnimationFrame(detectLoop);
         return;
       }
@@ -193,12 +237,28 @@ export default function AttentionMonitor({
             performance.now()
           );
 
-          const nextIssue = analyzeFaceResult(result);
-          updateIssue(nextIssue);
+          const analysis = analyzeFaceResult(result);
+
+          applyAttentionIssue(analysis.issue);
+
+          const pendingSeconds = pendingIssueStartRef.current
+            ? Math.floor((Date.now() - pendingIssueStartRef.current) / 1000)
+            : 0;
+
+          setDebugInfo({
+            ...analysis,
+            pendingIssue: pendingIssueRef.current,
+            pendingSeconds,
+          });
         }
       } catch (error) {
         console.warn("Face detection warning:", error);
-        updateIssue("ERROR");
+        applyAttentionIssue("ERROR");
+        setDebugInfo({
+          issue: "ERROR",
+          faceCount: 0,
+          note: "detectForVideo failed",
+        });
       }
 
       animationFrameRef.current = requestAnimationFrame(detectLoop);
@@ -215,12 +275,31 @@ export default function AttentionMonitor({
     };
   }, [cameraTrack, warningDelayMs]);
 
-  function updateIssue(nextIssue: AttentionIssue) {
+  function getDelayForIssue(nextIssue: AttentionIssue) {
+    switch (nextIssue) {
+      case "SLEEPING":
+        return 1200;
+      case "MULTIPLE_FACES":
+        return 1500;
+      case "CAMERA_OFF":
+        return 1000;
+      case "ERROR":
+        return 1000;
+      case "NO_FACE":
+        return 3000;
+      case "LOOKING_AWAY":
+        return 3000;
+      default:
+        return warningDelayMs;
+    }
+  }
+
+  function applyAttentionIssue(nextIssue: AttentionIssue) {
     const now = Date.now();
 
     if (nextIssue === "LOOKING") {
-      issueStartTimeRef.current = null;
-      lastIssueRef.current = "LOOKING";
+      pendingIssueRef.current = null;
+      pendingIssueStartRef.current = null;
 
       setIssue("LOOKING");
       setShowWarning(false);
@@ -229,26 +308,32 @@ export default function AttentionMonitor({
       return;
     }
 
-    if (lastIssueRef.current !== nextIssue) {
-      issueStartTimeRef.current = now;
-      lastIssueRef.current = nextIssue;
+    if (pendingIssueRef.current !== nextIssue) {
+      pendingIssueRef.current = nextIssue;
+      pendingIssueStartRef.current = now;
 
-      setIssue(nextIssue);
+      setIssue("LOOKING");
       setShowWarning(false);
       setWarningSeconds(0);
 
       return;
     }
 
-    const startedAt = issueStartTimeRef.current ?? now;
+    const startedAt = pendingIssueStartRef.current ?? now;
     const durationMs = now - startedAt;
+    const requiredDelayMs = getDelayForIssue(nextIssue);
+
+    if (durationMs < requiredDelayMs) {
+      setIssue("LOOKING");
+      setShowWarning(false);
+      setWarningSeconds(Math.floor(durationMs / 1000));
+
+      return;
+    }
 
     setIssue(nextIssue);
     setWarningSeconds(Math.floor(durationMs / 1000));
-
-    if (durationMs >= warningDelayMs) {
-      setShowWarning(true);
-    }
+    setShowWarning(true);
   }
 
   function getWarningMessage() {
@@ -260,7 +345,7 @@ export default function AttentionMonitor({
       case "LOOKING_AWAY":
         return "Please look at the screen.";
       case "SLEEPING":
-        return "Possible sleeping or eyes closed detected.";
+        return "Possible sleeping or covered eyes detected.";
       case "CAMERA_OFF":
         return "Camera is off. Please turn on your camera.";
       case "ERROR":
@@ -277,7 +362,7 @@ export default function AttentionMonitor({
       <div className={styles.attentionPill}>
         <span
           className={
-            issue === "LOOKING"
+            issue === "LOOKING" || issue === "LOADING"
               ? styles.attentionDotOk
               : styles.attentionDotWarning
           }
@@ -290,6 +375,37 @@ export default function AttentionMonitor({
             ? "Loading monitor"
             : "Attention warning"}
         </span>
+      </div>
+
+      <div className={styles.attentionDebugPanel}>
+        <div className={styles.attentionDebugTitle}>Detection Debug</div>
+
+        <div className={styles.attentionDebugGrid}>
+          <span>Raw</span>
+          <strong>{debugInfo.issue}</strong>
+
+          <span>Pending</span>
+          <strong>
+            {debugInfo.pendingIssue ?? "-"} / {debugInfo.pendingSeconds ?? 0}s
+          </strong>
+
+          <span>Faces</span>
+          <strong>{debugInfo.faceCount}</strong>
+
+          <span>Eye open</span>
+          <strong>{formatNumber(debugInfo.eyeOpenRatio)}</strong>
+
+          <span>Head offset</span>
+          <strong>{formatNumber(debugInfo.headOffsetX)}</strong>
+
+          <span>Gaze X/Y</span>
+          <strong>
+            {formatNumber(debugInfo.gazeX)} / {formatNumber(debugInfo.gazeY)}
+          </strong>
+
+          <span>Note</span>
+          <strong>{debugInfo.note ?? "-"}</strong>
+        </div>
       </div>
 
       {showWarning && (
@@ -309,15 +425,23 @@ export default function AttentionMonitor({
   );
 }
 
-function analyzeFaceResult(result: FaceResult): AttentionIssue {
+function analyzeFaceResult(result: FaceResult): AnalysisResult {
   const faces = result.faceLandmarks ?? [];
 
   if (faces.length === 0) {
-    return "NO_FACE";
+    return {
+      issue: "NO_FACE",
+      faceCount: 0,
+      note: "No face landmarks",
+    };
   }
 
   if (faces.length > 1) {
-    return "MULTIPLE_FACES";
+    return {
+      issue: "MULTIPLE_FACES",
+      faceCount: faces.length,
+      note: "More than one face",
+    };
   }
 
   const face = faces[0];
@@ -352,16 +476,20 @@ function analyzeFaceResult(result: FaceResult): AttentionIssue {
     !leftIris ||
     !rightIris
   ) {
-    return "LOOKING";
+    return {
+      issue: "LOOKING_AWAY",
+      faceCount: 1,
+      note: "Missing eye or iris landmarks",
+    };
   }
 
   const eyeCenterX = (leftEyeOuter.x + rightEyeOuter.x) / 2;
   const faceWidth = Math.abs(rightEyeOuter.x - leftEyeOuter.x);
 
-  const normalizedHeadOffsetX =
+  const headOffsetX =
     faceWidth > 0.00001 ? Math.abs(nose.x - eyeCenterX) / faceWidth : 0;
 
-  const headFacingScreen = normalizedHeadOffsetX < 0.22;
+  const headFacingScreen = headOffsetX < 0.22;
 
   const leftGazeX = normalizedPosition(
     leftIris.x,
@@ -412,20 +540,44 @@ function analyzeFaceResult(result: FaceResult): AttentionIssue {
 
   const avgEyeOpenRatio = (leftEyeOpenRatio + rightEyeOpenRatio) / 2;
 
-  const eyesClosed = avgEyeOpenRatio < 0.07;
+  const eyesClosed = avgEyeOpenRatio < 0.11;
 
   const faceTooFarFromCenter =
     nose.x < 0.12 || nose.x > 0.88 || nose.y < 0.08 || nose.y > 0.94;
 
   if (eyesClosed) {
-    return "SLEEPING";
+    return {
+      issue: "SLEEPING",
+      faceCount: 1,
+      eyeOpenRatio: avgEyeOpenRatio,
+      headOffsetX,
+      gazeX: avgGazeX,
+      gazeY: avgGazeY,
+      note: "Eyes closed / covered",
+    };
   }
 
   if (!headFacingScreen || !gazeOnScreen || faceTooFarFromCenter) {
-    return "LOOKING_AWAY";
+    return {
+      issue: "LOOKING_AWAY",
+      faceCount: 1,
+      eyeOpenRatio: avgEyeOpenRatio,
+      headOffsetX,
+      gazeX: avgGazeX,
+      gazeY: avgGazeY,
+      note: "Head or gaze away",
+    };
   }
 
-  return "LOOKING";
+  return {
+    issue: "LOOKING",
+    faceCount: 1,
+    eyeOpenRatio: avgEyeOpenRatio,
+    headOffsetX,
+    gazeX: avgGazeX,
+    gazeY: avgGazeY,
+    note: "Looking",
+  };
 }
 
 function normalizedPosition(value: number, pointA: number, pointB: number) {
@@ -446,4 +598,12 @@ function distanceX(a: Landmark, b: Landmark) {
 
 function distanceY(a: Landmark, b: Landmark) {
   return Math.abs(a.y - b.y);
+}
+
+function formatNumber(value?: number) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "-";
+  }
+
+  return value.toFixed(3);
 }
