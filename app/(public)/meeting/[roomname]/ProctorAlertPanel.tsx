@@ -157,22 +157,22 @@ function decodePayload(payload: unknown) {
 
 function formatIssue(issue: AttentionEvent["issue"]) {
   switch (issue) {
-    case "NO_FACE":
-      return "No face detected";
-    case "MULTIPLE_FACES":
-      return "Multiple faces";
-    case "LOOKING_AWAY":
-      return "Looking away";
-    case "SLEEPING":
-      return "Sleeping / covered eyes";
+    case "LOOKING":
+      return "Attention recovered";
+
+    case "UNATTENTIVE":
+      return "Unattentive";
+
     case "CAMERA_OFF":
       return "Camera off";
+
     case "ERROR":
       return "Detection error";
-    case "LOOKING":
-      return "Looking";
-    default:
-      return issue;
+
+    default: {
+      const exhaustiveCheck: never = issue;
+      return exhaustiveCheck;
+    }
   }
 }
 
