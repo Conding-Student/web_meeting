@@ -2,12 +2,37 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, Code2, Layout, Boxes } from "lucide-react";
+import { ArrowRight, Code2, Layout, Boxes, Video } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import BoilerplateModal from "@/shared/ui/BoilerplateModal";
+import {
+	createMeetingRoomName,
+	normalizeMeetingRoomName,
+} from "@/shared/utils/meetingRoom";
 
 export default function HeroPage() {
+	const router = useRouter();
+
 	const [showBoilerplate, setShowBoilerplate] = useState(false);
+	const [roomCode, setRoomCode] = useState("");
+
+	function handleCreateMeeting() {
+		const roomName = createMeetingRoomName();
+
+		router.push(`/meeting/${roomName}`);
+	}
+
+	function handleJoinMeeting() {
+		const normalizedRoomCode = normalizeMeetingRoomName(roomCode);
+
+		if (!normalizedRoomCode) {
+			alert("Please enter a valid room code.");
+			return;
+		}
+
+		router.push(`/meeting/${normalizedRoomCode}`);
+	}
 
 	return (
 		<>
@@ -23,9 +48,10 @@ export default function HeroPage() {
 								fill
 								className="object-contain"
 								priority
-								sizes="40px" 
+								sizes="40px"
 							/>
 						</div>
+
 						<div className="flex flex-col">
 							<span className="text-sm font-bold text-gray-900 leading-tight">
 								Bakawan Data Analytics
@@ -58,8 +84,6 @@ export default function HeroPage() {
 					</p>
 
 					{/* CTA Section */}
-
-
 					<div className="flex flex-col sm:flex-row gap-5">
 						<Link
 							href="/dashboard"
@@ -83,19 +107,55 @@ export default function HeroPage() {
 							/>
 						</Link>
 
-						<Link
-						href="/meeting/test-room"
-						className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-white"
+						<button
+							type="button"
+							onClick={handleCreateMeeting}
+							className="group flex items-center justify-center gap-3 px-10 py-4 bg-blue-600 text-white rounded-2xl font-bold hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-blue-900/20"
 						>
-						Start Meeting
-						</Link>
+							<Video size={20} />
+							Create Meeting
+							<ArrowRight
+								size={20}
+								className="group-hover:translate-x-1 transition-transform"
+							/>
+						</button>
 
 						<button
+							type="button"
 							onClick={() => setShowBoilerplate(true)}
 							className="flex items-center justify-center gap-2 px-10 py-4 bg-white text-gray-700 border-2 border-gray-100 rounded-2xl font-bold hover:border-[#e8d941] transition-all"
 						>
 							<Code2 size={20} /> View Boilerplate
 						</button>
+					</div>
+
+					{/* Join Existing Meeting */}
+					<div className="mt-8 w-full max-w-xl rounded-3xl border border-gray-100 bg-gray-50 p-5">
+						<p className="mb-4 text-sm font-semibold text-gray-600">
+							Already have a meeting room code?
+						</p>
+
+						<div className="flex flex-col sm:flex-row gap-3">
+							<input
+								value={roomCode}
+								onChange={(event) => setRoomCode(event.target.value)}
+								onKeyDown={(event) => {
+									if (event.key === "Enter") {
+										handleJoinMeeting();
+									}
+								}}
+								placeholder="Example: room-mb8k91a-x7p2d"
+								className="min-w-0 flex-1 rounded-2xl border border-gray-200 bg-white px-5 py-3 text-sm text-gray-800 outline-none focus:border-blue-500"
+							/>
+
+							<button
+								type="button"
+								onClick={handleJoinMeeting}
+								className="rounded-2xl bg-gray-900 px-6 py-3 text-sm font-bold text-white hover:bg-gray-800 transition-colors"
+							>
+								Join Room
+							</button>
+						</div>
 					</div>
 
 					{/* Feature Grid */}
@@ -104,9 +164,11 @@ export default function HeroPage() {
 							<div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center text-[#05582E] mb-6 group-hover:bg-[#05582E] group-hover:text-white transition-colors">
 								<Layout size={28} />
 							</div>
+
 							<h3 className="font-bold text-xl text-gray-900 mb-3">
 								Modular Layouts
 							</h3>
+
 							<p className="text-gray-500 leading-relaxed">
 								Responsive Sidebar, Header, and Footer components pre-built.
 							</p>
@@ -116,9 +178,11 @@ export default function HeroPage() {
 							<div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center text-[#e8d941] mb-6 group-hover:bg-[#e8d941] group-hover:text-white transition-colors">
 								<Boxes size={28} />
 							</div>
+
 							<h3 className="font-bold text-xl text-gray-900 mb-3">
 								Feature Folders
 							</h3>
+
 							<p className="text-gray-500 leading-relaxed">
 								Clean separation of concerns with dedicated components, hooks,
 								and services per feature.
@@ -129,9 +193,11 @@ export default function HeroPage() {
 							<div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-6 group-hover:bg-blue-600 group-hover:text-white transition-colors">
 								<Code2 size={28} />
 							</div>
+
 							<h3 className="font-bold text-xl text-gray-900 mb-3">
 								API Wrapper
 							</h3>
+
 							<p className="text-gray-500 leading-relaxed">
 								A robust Server/Client API utility with built-in error handling.
 							</p>

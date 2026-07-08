@@ -112,11 +112,19 @@ export function analyzeFrame(
 
   const avgGazeY = (leftGazeY + rightGazeY) / 2;
 
-  const gazeOnScreen =
-    avgGazeX > 0.35 &&
-    avgGazeX < 0.65 &&
-    avgGazeY > 0.3 &&
-    avgGazeY < 0.8;
+  const horizontalGazeOnScreen =
+    leftGazeX > 0.42 &&
+    leftGazeX < 0.58 &&
+    rightGazeX > 0.42 &&
+    rightGazeX < 0.58;
+
+  const verticalGazeOnScreen =
+    leftGazeY > 0.36 &&
+    leftGazeY < 0.72 &&
+    rightGazeY > 0.36 &&
+    rightGazeY < 0.72;
+
+  const gazeOnScreen = horizontalGazeOnScreen && verticalGazeOnScreen;
 
   const leftEyeWidth = distanceX(leftEyeOuter, leftEyeInner);
   const rightEyeWidth = distanceX(rightEyeOuter, rightEyeInner);
