@@ -80,7 +80,7 @@ COPY .env .env
 # APP_INTERNAL_PORT: Next.js internal port — change if your app uses a different port
 ENV PORT=3000
 # EXPOSED_PORT: The port Nginx listens on and that Docker exposes to the host
-EXPOSE 16002
+EXPOSE 65093
 # ---------------------------------------------------------------------------
 
 # Startup script: launches Nginx then Next.js

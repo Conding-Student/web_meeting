@@ -1,19 +1,14 @@
-export const ATTENTION_TOPIC = "attention-alerts";
-
-export type AttentionEventType = "ATTENTION_ALERT" | "ATTENTION_RECOVERED";
+export const ATTENTION_TOPIC = "attention-monitor";
 
 export type AttentionIssue =
-  | "NO_FACE"
-  | "MULTIPLE_FACES"
-  | "LOOKING_AWAY"
-  | "SLEEPING"
+  | "LOOKING"
+  | "UNATTENTIVE"
   | "CAMERA_OFF"
-  | "ERROR"
-  | "LOOKING";
+  | "ERROR";
 
 export type AttentionEvent = {
   id: string;
-  type: AttentionEventType;
+  type: "ATTENTION_ALERT" | "ATTENTION_RECOVERED";
   roomName: string;
   participantName: string;
   participantIdentity: string;
