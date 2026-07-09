@@ -212,6 +212,7 @@ export default function AttentionMonitor({
       })
       .catch((error) => {
         console.warn("Attention monitor video play warning:", error);
+
         applyAttentionIssue("CAMERA_OFF");
         setDebugInfo({
           issue: "CAMERA_OFF",
@@ -284,6 +285,7 @@ export default function AttentionMonitor({
         }
       } catch (error) {
         console.warn("Detection warning:", error);
+
         applyAttentionIssue("ERROR");
         setDebugInfo({
           issue: "ERROR",

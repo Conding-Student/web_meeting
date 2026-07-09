@@ -47,13 +47,16 @@ export type HolisticLandmarkerLike = {
 export type AnalysisResult = {
   issue: MonitorIssue;
   reason?: UnattentiveReason;
+
   faceCount: number;
   handCount: number;
   handOverEyes: boolean;
+
   eyeOpenRatio?: number;
   headOffsetX?: number;
   gazeX?: number;
   gazeY?: number;
+
   note?: string;
 };
 

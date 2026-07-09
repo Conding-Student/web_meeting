@@ -6,6 +6,29 @@ import type {
   UnattentiveReason,
 } from "./attentionTypes";
 
+const EYE_OPEN_MIN_RATIO = 0.11;
+
+// Head turn threshold.
+// Higher = mas maluwag.
+// Lower = mas strict.
+const HEAD_OFFSET_MAX = 0.23;
+
+// Gaze threshold.
+// Ito ay "screen area", hindi exact center.
+// Kapag gusto mong higpitan, gawin mong:
+// X: 0.32 to 0.68
+// Y: 0.28 to 0.82
+const GAZE_X_MIN = 0.25;
+const GAZE_X_MAX = 0.75;
+const GAZE_Y_MIN = 0.2;
+const GAZE_Y_MAX = 0.88;
+
+// Face position sa camera frame.
+const FACE_X_MIN = 0.12;
+const FACE_X_MAX = 0.88;
+const FACE_Y_MIN = 0.08;
+const FACE_Y_MAX = 0.94;
+
 export function analyzeFrame(
   faceResult: FaceResult,
   handResult: HandResult
@@ -19,7 +42,7 @@ export function analyzeFrame(
       faceCount: 0,
       handCount: hands.length,
       handOverEyes: false,
-      note: "No face landmarks",
+      note: "No face detected",
     });
   }
 
@@ -29,14 +52,13 @@ export function analyzeFrame(
       faceCount: faces.length,
       handCount: hands.length,
       handOverEyes: false,
-      note: "More than one face",
+      note: "Multiple faces detected",
     });
   }
 
   const face = faces[0];
 
   const nose = face[1];
-  const forehead = face[10];
 
   const leftEyeOuter = face[33];
   const leftEyeInner = face[133];
@@ -55,7 +77,6 @@ export function analyzeFrame(
 
   if (
     !nose ||
-    !forehead ||
     !leftEyeOuter ||
     !leftEyeInner ||
     !rightEyeOuter ||
@@ -72,7 +93,7 @@ export function analyzeFrame(
       faceCount: 1,
       handCount: hands.length,
       handOverEyes: false,
-      note: "Missing eye or iris landmarks",
+      note: "Missing required eye or iris landmarks",
     });
   }
 
@@ -82,7 +103,7 @@ export function analyzeFrame(
   const headOffsetX =
     faceWidth > 0.00001 ? Math.abs(nose.x - eyeCenterX) / faceWidth : 0;
 
-  const headFacingScreen = headOffsetX < 0.22;
+  const headFacingScreen = headOffsetX < HEAD_OFFSET_MAX;
 
   const leftGazeX = normalizedPosition(
     leftIris.x,
@@ -112,19 +133,11 @@ export function analyzeFrame(
 
   const avgGazeY = (leftGazeY + rightGazeY) / 2;
 
-  const horizontalGazeOnScreen =
-    leftGazeX > 0.42 &&
-    leftGazeX < 0.58 &&
-    rightGazeX > 0.42 &&
-    rightGazeX < 0.58;
-
-  const verticalGazeOnScreen =
-    leftGazeY > 0.36 &&
-    leftGazeY < 0.72 &&
-    rightGazeY > 0.36 &&
-    rightGazeY < 0.72;
-
-  const gazeOnScreen = horizontalGazeOnScreen && verticalGazeOnScreen;
+  const gazeOnScreen =
+    avgGazeX > GAZE_X_MIN &&
+    avgGazeX < GAZE_X_MAX &&
+    avgGazeY > GAZE_Y_MIN &&
+    avgGazeY < GAZE_Y_MAX;
 
   const leftEyeWidth = distanceX(leftEyeOuter, leftEyeInner);
   const rightEyeWidth = distanceX(rightEyeOuter, rightEyeInner);
@@ -141,7 +154,7 @@ export function analyzeFrame(
 
   const avgEyeOpenRatio = (leftEyeOpenRatio + rightEyeOpenRatio) / 2;
 
-  const eyesClosed = avgEyeOpenRatio < 0.11;
+  const eyesClosed = avgEyeOpenRatio < EYE_OPEN_MIN_RATIO;
 
   const handOverEyes = isHandCoveringEyesStrict(hands, {
     leftEyeOuter,
@@ -155,18 +168,14 @@ export function analyzeFrame(
   });
 
   const faceTooFarFromCenter =
-    nose.x < 0.12 || nose.x > 0.88 || nose.y < 0.08 || nose.y > 0.94;
+    nose.x < FACE_X_MIN ||
+    nose.x > FACE_X_MAX ||
+    nose.y < FACE_Y_MIN ||
+    nose.y > FACE_Y_MAX;
 
-  const isLooking =
-    !eyesClosed &&
-    !handOverEyes &&
-    headFacingScreen &&
-    gazeOnScreen &&
-    !faceTooFarFromCenter;
-
-  if (isLooking) {
-    return {
-      issue: "LOOKING",
+  if (handOverEyes) {
+    return createUnattentiveResult({
+      reason: "HAND_OVER_EYES",
       faceCount: 1,
       handCount: hands.length,
       handOverEyes,
@@ -174,20 +183,68 @@ export function analyzeFrame(
       headOffsetX,
       gazeX: avgGazeX,
       gazeY: avgGazeY,
-      note: "Looking",
-    };
+      note: "Hand covering eye area",
+    });
   }
 
-  const reason = getUnattentiveReason({
-    eyesClosed,
-    handOverEyes,
-    headFacingScreen,
-    gazeOnScreen,
-    faceTooFarFromCenter,
-  });
+  if (eyesClosed) {
+    return createUnattentiveResult({
+      reason: "EYES_CLOSED",
+      faceCount: 1,
+      handCount: hands.length,
+      handOverEyes,
+      eyeOpenRatio: avgEyeOpenRatio,
+      headOffsetX,
+      gazeX: avgGazeX,
+      gazeY: avgGazeY,
+      note: "Eyes closed",
+    });
+  }
 
-  return createUnattentiveResult({
-    reason,
+  if (faceTooFarFromCenter) {
+    return createUnattentiveResult({
+      reason: "FACE_OFF_CENTER",
+      faceCount: 1,
+      handCount: hands.length,
+      handOverEyes,
+      eyeOpenRatio: avgEyeOpenRatio,
+      headOffsetX,
+      gazeX: avgGazeX,
+      gazeY: avgGazeY,
+      note: "Face too far from camera center",
+    });
+  }
+
+  if (!headFacingScreen) {
+    return createUnattentiveResult({
+      reason: "HEAD_AWAY",
+      faceCount: 1,
+      handCount: hands.length,
+      handOverEyes,
+      eyeOpenRatio: avgEyeOpenRatio,
+      headOffsetX,
+      gazeX: avgGazeX,
+      gazeY: avgGazeY,
+      note: "Head is not facing the screen",
+    });
+  }
+
+  if (!gazeOnScreen) {
+    return createUnattentiveResult({
+      reason: "GAZE_AWAY",
+      faceCount: 1,
+      handCount: hands.length,
+      handOverEyes,
+      eyeOpenRatio: avgEyeOpenRatio,
+      headOffsetX,
+      gazeX: avgGazeX,
+      gazeY: avgGazeY,
+      note: "Eyes are looking away from screen area",
+    });
+  }
+
+  return {
+    issue: "LOOKING",
     faceCount: 1,
     handCount: hands.length,
     handOverEyes,
@@ -195,61 +252,8 @@ export function analyzeFrame(
     headOffsetX,
     gazeX: avgGazeX,
     gazeY: avgGazeY,
-    note: getReasonNote(reason),
-  });
-}
-
-function getUnattentiveReason(params: {
-  eyesClosed: boolean;
-  handOverEyes: boolean;
-  headFacingScreen: boolean;
-  gazeOnScreen: boolean;
-  faceTooFarFromCenter: boolean;
-}): UnattentiveReason {
-  if (params.handOverEyes) {
-    return "HAND_OVER_EYES";
-  }
-
-  if (params.eyesClosed) {
-    return "EYES_CLOSED";
-  }
-
-  if (!params.headFacingScreen) {
-    return "HEAD_AWAY";
-  }
-
-  if (!params.gazeOnScreen) {
-    return "GAZE_AWAY";
-  }
-
-  if (params.faceTooFarFromCenter) {
-    return "FACE_OFF_CENTER";
-  }
-
-  return "GAZE_AWAY";
-}
-
-function getReasonNote(reason: UnattentiveReason) {
-  switch (reason) {
-    case "NO_FACE":
-      return "No face detected";
-    case "MULTIPLE_FACES":
-      return "Multiple faces detected";
-    case "MISSING_LANDMARKS":
-      return "Missing required face landmarks";
-    case "EYES_CLOSED":
-      return "Eyes closed";
-    case "HAND_OVER_EYES":
-      return "Hand covering eye area";
-    case "HEAD_AWAY":
-      return "Head is not facing the screen";
-    case "GAZE_AWAY":
-      return "Eyes are looking away";
-    case "FACE_OFF_CENTER":
-      return "Face is too far from center";
-    default:
-      return "User is not attentive";
-  }
+    note: "Looking",
+  };
 }
 
 function createUnattentiveResult(params: {
