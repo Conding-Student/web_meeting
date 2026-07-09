@@ -12,7 +12,9 @@ type TokenRequestBody = {
 };
 
 function normalizeRole(value: unknown): MeetingRole {
-  if (value === "host" || value === "proctor") {
+  const normalizedValue = String(value ?? "").trim().toLowerCase();
+
+  if (normalizedValue === "host" || normalizedValue === "proctor") {
     return "host";
   }
 
@@ -94,10 +96,9 @@ async function createLiveKitToken(
     canSubscribe: true,
 
     // Current setup:
-    // host/proctor = watcher only
-    // participant = publishes camera/mic/data alerts
-    // canPublish: role === "participant",
-    // canPublishData: role === "participant",
+    // host/proctor = can join and watch
+    // participant = can join, publish camera/mic, and send attention alerts
+    // For now, both are allowed to publish to avoid camera/mic permission issues.
     canPublish: true,
     canPublishData: true,
   });

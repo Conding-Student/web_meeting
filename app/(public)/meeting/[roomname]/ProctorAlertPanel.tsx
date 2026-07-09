@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import { useDataChannel, useParticipants } from "@livekit/components-react";
 import { ATTENTION_TOPIC, type AttentionEvent } from "./attentionEvents";
 import styles from "./MeetingRoom.module.css";
@@ -70,9 +71,14 @@ export default function ProctorAlertPanel({ roomName }: ProctorAlertPanelProps) 
   }, [participants]);
 
   const handleMessage = useCallback(
-    (msg: any) => {
+    (msg: unknown) => {
       try {
-        const rawPayload = msg?.payload ?? msg?.data ?? msg;
+        const rawPayload =
+          typeof msg === "object" && msg !== null
+            ? (msg as { payload?: unknown; data?: unknown }).payload ??
+              (msg as { payload?: unknown; data?: unknown }).data ??
+              msg
+            : msg;
 
         if (!rawPayload) return;
 
@@ -319,7 +325,7 @@ const hostBadgeStyle = {
   padding: "4px 10px",
   fontSize: "11px",
   fontWeight: 800,
-} satisfies React.CSSProperties;
+} satisfies CSSProperties;
 
 const participantBadgeStyle = {
   borderRadius: "999px",
@@ -328,7 +334,7 @@ const participantBadgeStyle = {
   padding: "4px 10px",
   fontSize: "11px",
   fontWeight: 800,
-} satisfies React.CSSProperties;
+} satisfies CSSProperties;
 
 const inlineHostLabelStyle = {
   display: "inline-flex",
@@ -340,4 +346,4 @@ const inlineHostLabelStyle = {
   fontSize: "10px",
   fontWeight: 800,
   verticalAlign: "middle",
-} satisfies React.CSSProperties;
+} satisfies CSSProperties;

@@ -11,6 +11,8 @@ import AttentionMonitor from "./AttentionMonitor";
 import ProctorAlertPanel from "./ProctorAlertPanel";
 import styles from "./MeetingRoom.module.css";
 
+type MeetingRole = "host" | "participant";
+
 type UserChoices = {
   username?: string;
   videoEnabled?: boolean;
@@ -21,8 +23,13 @@ export default function MeetingPage() {
   const params = useParams();
   const searchParams = useSearchParams();
 
-  const role = searchParams.get("role");
-  const isHost = role === "host" || role === "proctor";
+  const roleParam = searchParams.get("role")?.trim().toLowerCase();
+  const meetingRole: MeetingRole =
+    roleParam === "host" || roleParam === "proctor"
+      ? "host"
+      : "participant";
+
+  const isHost = meetingRole === "host";
 
   const roomName = useMemo(() => {
     const room = params?.roomname;
@@ -33,6 +40,14 @@ export default function MeetingPage() {
 
     return room ?? "default-room";
   }, [params]);
+
+  const defaultUsername = useMemo(() => {
+    if (isHost) {
+      return "Host-Proctor";
+    }
+
+    return `Guest-${Math.floor(Math.random() * 10000)}`;
+  }, [isHost]);
 
   const [token, setToken] = useState<string>("");
   const [serverUrl, setServerUrl] = useState<string>("");
@@ -45,11 +60,7 @@ export default function MeetingPage() {
       setIsJoining(true);
       setError("");
 
-      const fallbackName = isHost
-        ? "Host-Proctor"
-        : `Guest-${Math.floor(Math.random() * 10000)}`;
-
-      const username = values.username?.trim() || fallbackName;
+      const username = values.username?.trim() || defaultUsername;
 
       const res = await fetch("/api/livekit-token", {
         method: "POST",
@@ -59,6 +70,7 @@ export default function MeetingPage() {
         body: JSON.stringify({
           roomName,
           participantName: username,
+          role: meetingRole,
         }),
       });
 
@@ -125,9 +137,7 @@ export default function MeetingPage() {
           >
             <PreJoin
               defaults={{
-                username: isHost
-                  ? "Host-Proctor"
-                  : `Guest-${Math.floor(Math.random() * 10000)}`,
+                username: defaultUsername,
                 videoEnabled: true,
                 audioEnabled: true,
               }}
