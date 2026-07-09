@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useDataChannel } from "@livekit/components-react";
+import { useDataChannel, useParticipants } from "@livekit/components-react";
 import { ATTENTION_TOPIC, type AttentionEvent } from "./attentionEvents";
 import styles from "./MeetingRoom.module.css";
+
+type MeetingRole = "host" | "participant";
 
 type ParticipantStatus = {
   participantName: string;
@@ -14,15 +16,58 @@ type ParticipantStatus = {
   isRecovered: boolean;
 };
 
+type ParticipantRoleInfo = {
+  role: MeetingRole;
+  isHost: boolean;
+};
+
 type ProctorAlertPanelProps = {
   roomName: string;
 };
 
 export default function ProctorAlertPanel({ roomName }: ProctorAlertPanelProps) {
+  const participants = useParticipants();
+
   const [events, setEvents] = useState<AttentionEvent[]>([]);
   const [statuses, setStatuses] = useState<Record<string, ParticipantStatus>>(
     {}
   );
+
+  const participantRoleByIdentity = useMemo(() => {
+    const record: Record<string, ParticipantRoleInfo> = {};
+
+    for (const participant of participants) {
+      record[participant.identity] = getParticipantRoleInfo(
+        participant.metadata,
+        participant.identity
+      );
+    }
+
+    return record;
+  }, [participants]);
+
+  const roomParticipants = useMemo(() => {
+    return participants
+      .map((participant) => {
+        const roleInfo = getParticipantRoleInfo(
+          participant.metadata,
+          participant.identity
+        );
+
+        return {
+          identity: participant.identity,
+          name: participant.name || participant.identity,
+          role: roleInfo.role,
+          isHost: roleInfo.isHost,
+        };
+      })
+      .sort((a, b) => {
+        if (a.isHost && !b.isHost) return -1;
+        if (!a.isHost && b.isHost) return 1;
+
+        return a.name.localeCompare(b.name);
+      });
+  }, [participants]);
 
   const handleMessage = useCallback(
     (msg: any) => {
@@ -86,6 +131,37 @@ export default function ProctorAlertPanel({ roomName }: ProctorAlertPanelProps) 
       </div>
 
       <div className={styles.proctorSection}>
+        <h3>Room Participants</h3>
+
+        {roomParticipants.length === 0 ? (
+          <p className={styles.proctorEmpty}>No participants connected yet.</p>
+        ) : (
+          <div className={styles.proctorStatusList}>
+            {roomParticipants.map((participant) => (
+              <div
+                key={participant.identity}
+                className={styles.proctorStatusWarn}
+              >
+                <div>
+                  <strong>{participant.name}</strong>
+
+                  <span>
+                    {participant.isHost ? "Meeting host" : "Participant"}
+                  </span>
+                </div>
+
+                {participant.isHost ? (
+                  <small style={hostBadgeStyle}>Host</small>
+                ) : (
+                  <small style={participantBadgeStyle}>User</small>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className={styles.proctorSection}>
         <h3>Current Idle Participants</h3>
 
         {idleList.length === 0 ? (
@@ -94,19 +170,31 @@ export default function ProctorAlertPanel({ roomName }: ProctorAlertPanelProps) 
           </p>
         ) : (
           <div className={styles.proctorStatusList}>
-            {idleList.map((status) => (
-              <div
-                key={status.participantIdentity}
-                className={styles.proctorStatusWarn}
-              >
-                <div>
-                  <strong>{status.participantName}</strong>
-                  <span>{formatIssue(status.issue)}</span>
-                </div>
+            {idleList.map((status) => {
+              const roleInfo =
+                participantRoleByIdentity[status.participantIdentity] ??
+                getParticipantRoleInfo(undefined, status.participantIdentity);
 
-                <small>{status.durationSeconds}s</small>
-              </div>
-            ))}
+              return (
+                <div
+                  key={status.participantIdentity}
+                  className={styles.proctorStatusWarn}
+                >
+                  <div>
+                    <strong>
+                      {status.participantName}{" "}
+                      {roleInfo.isHost && (
+                        <span style={inlineHostLabelStyle}>Host</span>
+                      )}
+                    </strong>
+
+                    <span>{formatIssue(status.issue)}</span>
+                  </div>
+
+                  <small>{status.durationSeconds}s</small>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -118,20 +206,32 @@ export default function ProctorAlertPanel({ roomName }: ProctorAlertPanelProps) 
           <p className={styles.proctorEmpty}>Waiting for alerts...</p>
         ) : (
           <div className={styles.proctorEventList}>
-            {events.map((event) => (
-              <div key={event.id} className={styles.proctorEventItem}>
-                <div>
-                  <strong>{event.participantName}</strong>
-                  <span>
-                    {event.type === "ATTENTION_RECOVERED"
-                      ? "Recovered"
-                      : formatIssue(event.issue)}
-                  </span>
-                </div>
+            {events.map((event) => {
+              const roleInfo =
+                participantRoleByIdentity[event.participantIdentity] ??
+                getParticipantRoleInfo(undefined, event.participantIdentity);
 
-                <small>{formatTime(event.timestamp)}</small>
-              </div>
-            ))}
+              return (
+                <div key={event.id} className={styles.proctorEventItem}>
+                  <div>
+                    <strong>
+                      {event.participantName}{" "}
+                      {roleInfo.isHost && (
+                        <span style={inlineHostLabelStyle}>Host</span>
+                      )}
+                    </strong>
+
+                    <span>
+                      {event.type === "ATTENTION_RECOVERED"
+                        ? "Recovered"
+                        : formatIssue(event.issue)}
+                    </span>
+                  </div>
+
+                  <small>{formatTime(event.timestamp)}</small>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -153,6 +253,34 @@ function decodePayload(payload: unknown) {
   }
 
   return "";
+}
+
+function getParticipantRoleInfo(
+  metadata?: string,
+  identity?: string
+): ParticipantRoleInfo {
+  const fallbackRole = identity?.startsWith("host-")
+    ? "host"
+    : "participant";
+
+  try {
+    const parsed = JSON.parse(metadata ?? "{}") as {
+      role?: string;
+      isHost?: boolean;
+    };
+
+    const role = parsed.role === "host" || parsed.isHost ? "host" : fallbackRole;
+
+    return {
+      role,
+      isHost: role === "host",
+    };
+  } catch {
+    return {
+      role: fallbackRole,
+      isHost: fallbackRole === "host",
+    };
+  }
 }
 
 function formatIssue(issue: AttentionEvent["issue"]) {
@@ -183,3 +311,33 @@ function formatTime(value: string) {
     second: "2-digit",
   });
 }
+
+const hostBadgeStyle = {
+  borderRadius: "999px",
+  background: "#dbeafe",
+  color: "#1d4ed8",
+  padding: "4px 10px",
+  fontSize: "11px",
+  fontWeight: 800,
+} satisfies React.CSSProperties;
+
+const participantBadgeStyle = {
+  borderRadius: "999px",
+  background: "#f3f4f6",
+  color: "#4b5563",
+  padding: "4px 10px",
+  fontSize: "11px",
+  fontWeight: 800,
+} satisfies React.CSSProperties;
+
+const inlineHostLabelStyle = {
+  display: "inline-flex",
+  marginLeft: "6px",
+  borderRadius: "999px",
+  background: "#dbeafe",
+  color: "#1d4ed8",
+  padding: "2px 7px",
+  fontSize: "10px",
+  fontWeight: 800,
+  verticalAlign: "middle",
+} satisfies React.CSSProperties;
