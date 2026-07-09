@@ -20,7 +20,7 @@ export default function HeroPage() {
 	function handleCreateMeeting() {
 		const roomName = createMeetingRoomName();
 
-		router.push(`/meeting/${roomName}`);
+		router.push(`/meeting/${roomName}?role=host`);
 	}
 
 	function handleJoinMeeting() {
